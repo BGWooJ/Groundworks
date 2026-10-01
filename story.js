@@ -1,29 +1,9 @@
 /* =====================================================================
-   STORY
-   Everything that makes each run play differently: who you are, what
-   happens on the trail, how people react, and how it ends.
-   Stats run 0–10:  cred  = Credibility with leadership
-                    trust = Trust on the floor (the people who do the work)
-                    rigor = Rigor of your method
+   STORY: the light game layer.
+   Sponsor, guidance levels, complications (unscored judgment calls with
+   feedback), reaction lines, field guide hints, and marks.
    ===================================================================== */
-
 const SPONSOR = {name:'Marion Okafor', role:'First Vice President'};
-const START_WEEKS = 12;
-
-const STATS = [
-  {id:'cred',  name:'Credibility', d:'How much leadership trusts your judgment.', icon:'cred'},
-  {id:'trust', name:'Trust',       d:'How much the people who do the work trust you.', icon:'trust'},
-  {id:'rigor', name:'Rigor',       d:'How disciplined your method is.', icon:'rigor'},
-];
-
-const BACKGROUNDS = [
-  {id:'analyst', name:'The analyst', line:'Twelve years in the research division. You trust evidence and distrust anecdotes.',
-   stats:{cred:4, trust:3, rigor:6}, perk:'Pattern eye', perkD:'Your first two field interviews cost no time.'},
-  {id:'operator', name:'The operator', line:'Nine years running facilities and security operations. You know how the work really gets done.',
-   stats:{cred:3, trust:6, rigor:4}, perk:'Floor knowledge', perkD:'You hear a word from the floor at every step, before you profile it.'},
-  {id:'strategist', name:'The strategist', line:'Five years in the president\u2019s office. You know how decisions get made, and by whom.',
-   stats:{cred:6, trust:4, rigor:3}, perk:'Sponsor\u2019s ear', perkD:'Two extra weeks of runway, and one chance to rethink a decision on the trail.'},
-];
 
 const GUIDANCE = [
   {id:'ropes', name:'Walk me through it', d:'A pointer opens at every decision.'},
@@ -32,20 +12,6 @@ const GUIDANCE = [
 ];
 
 /* Standing effects: what your stats change about the game. */
-const EFFECTS = {
-  trustHigh:'The floor makes time for you: interviews cost no time.',
-  trustLow:'The floor is guarded: interviews take two weeks.',
-  credHigh:'Your sponsor bought you an extra week.',
-  credLow:'Leadership pulled the meeting forward a week.',
-  rigorHigh:'Your case will hold up under questioning.',
-};
-
-/* ---------------------------------------------------------------------
-   Trail events. Each run draws one per slot (two for "trail").
-   Options are shown in random order. d = stat and week changes.
-   {who} and {proc} are filled from the current expedition.
-   --------------------------------------------------------------------- */
-const EVENT_SLOTS = {sponsor:1, trail:2, data:1, team:1, metric:1};
 
 const EVENT_POOL = [
  {id:'demo', slot:'sponsor', from:'From your sponsor', title:'The demo',
@@ -181,29 +147,7 @@ const EVENT_POOL = [
 ];
 
 /* Earlier choices that come back later. where: 'lead:<slot>' | 'canvas' | 'debrief' | 'tools' */
-const CONSEQUENCES = [
-  {flag:'chatbot',   where:'lead:metric', text:'Leadership is still asking about the chatbot from the demo.'},
-  {flag:'chatbot',   where:'debrief',     text:'The chatbot from the demo is still on someone\u2019s list. You will need an answer for it.'},
-  {flag:'forty',     where:'debrief',     text:'The target of forty use cases is still on the slide, and now it is yours.'},
-  {flag:'brandFirst',where:'tools',       text:'Earlier, you agreed to buy a product before the requirement existed. The recommendations below start from the requirement instead.'},
-  {flag:'freePilot', where:'lead:data',   text:'The vendor\u2019s free pilot has just asked for a production data extract.'},
-  {flag:'paste',     where:'lead:team',   text:'Word has got round that you waved through a paste into a public tool.'},
-  {flag:'vague',     where:'debrief',     text:'The team remembers being told that nothing would change.'},
-  {flag:'extract',   where:'canvas',      text:'Data access was obtained informally. Expect the data owner to raise it.'},
-];
 
-/* Lead-in lines on events, chosen from your current standing. */
-const EVENT_LEADS = [
-  {test:S=>S.stats.cred>=7,  text:'Your sponsor has started forwarding you things directly.'},
-  {test:S=>S.stats.cred<=2,  text:'Your sponsor\u2019s replies have become shorter.'},
-  {test:S=>S.stats.trust>=7, text:'People on the floor have started bringing you things unprompted.'},
-  {test:S=>S.stats.trust<=2, text:'Conversations stop when you walk onto the floor.'},
-  {test:S=>S.weeks<=3,       text:'With the meeting close, everything arrives at once.'},
-];
-
-/* ---------------------------------------------------------------------
-   Reactions. Picked at random, never the same twice in a row.
-   --------------------------------------------------------------------- */
 const REACT = {
   arrive:[
     'You spend a morning alongside the {who}.',
@@ -233,67 +177,7 @@ const REACT = {
 };
 
 /* Sponsor dispatches at milestones. */
-const DISPATCH = {
-  terrain:{
-    high:'Good instincts on the map. The president\u2019s office noticed you went where the volume is.',
-    mid:'A reasonable shortlist. Expect questions about why you picked what you did.',
-    low:'Your shortlist raised eyebrows upstairs. Make the expedition count.',
-  },
-  lowWeeks:'Three weeks to the meeting. Choose your interviews carefully.',
-  noWeeks:'We are out of runway. Whatever you finish now, you finish late.',
-  canvas:{
-    high:'I have seen enough to back you. Make the one-pager sharp.',
-    mid:'Bring me one case I can defend in the room.',
-    low:'I need to be convinced. The one-pager has to do the work.',
-  },
-};
 
-/* ---------------------------------------------------------------------
-   Ranks and endings
-   --------------------------------------------------------------------- */
-const RANKS = [
-  {at:0,   name:'Day tripper',     d:'You saw the terrain. Next time, spend longer at each step before reaching for the toolkit.'},
-  {at:.30, name:'Trail scout',     d:'You can find the hotspots and name most of the work. Practise the matching and the reality check.'},
-  {at:.50, name:'Surveyor',        d:'You read the work well. Matching autonomy to stakes is where the next points are.'},
-  {at:.70, name:'Cartographer',    d:'You dissect processes well and match capabilities sensibly. The reality check is where the last points live.'},
-  {at:.85, name:'Expedition lead', d:'You start from the work, match the capability, size the autonomy and check reality. Take a team through it.'},
-];
-
-/* Checked in order; the first that passes is the ending. */
-const ENDINGS = [
-  {id:'overrun', name:'Over the line', test:(S,p)=>S.overrun>0,
-   d:'You ran past the leadership meeting. The case went in half-finished, and the president asked you to come back next quarter. The work was good; the timing was not.'},
-  {id:'redraw', name:'Back to the map', test:(S,p)=>p<.45 || S.stats.rigor<=2,
-   d:'The case does not hold together under questioning. Leadership asks you to go back to the terrain and start again, with a different process.'},
-  {id:'greenlit', name:'Green-lit', test:(S,p)=>S.stats.cred>=7 && S.stats.trust>=7 && S.stats.rigor>=5 && p>=.65,
-   d:'The president asks you to take the case to the board. Before you leave the room, the team asks when the pilot starts. Both ends of the building want this.'},
-  {id:'above', name:'Approved from above', test:(S,p)=>S.stats.cred>=6 && S.stats.trust<=4,
-   d:'Leadership approves the pilot. On the floor, the reaction is polite and cool. You have the mandate; you do not yet have the people who will make it work.'},
-  {id:'floor', name:'Backed by the floor', test:(S,p)=>S.stats.trust>=6 && S.stats.cred<=4,
-   d:'The team is ready to start tomorrow. Leadership is not convinced, and asks for a baseline and a business case. You have the people; now earn the mandate.'},
-  {id:'pilot', name:'Pilot with conditions', test:()=>true,
-   d:'Leadership approves a small pilot with a review in ninety days. Nobody is excited yet. That is usually how the good ones start.'},
-];
-
-/* Marks are kept across runs, in this browser. */
-const MARKS = [
-  {id:'first',    name:'First light',         d:'Finish an expedition.', icon:'compass'},
-  {id:'flagships',name:'Four corners',        d:'Finish all four flagship expeditions.', icon:'map'},
-  {id:'offpath',  name:'Off the beaten path', d:'Finish an expedition beyond the flagship four.', icon:'route'},
-  {id:'lowroad',  name:'The long way round',  d:'Take a low-rated process all the way to the end.', icon:'flag'},
-  {id:'norule',   name:'Not an AI problem',   d:'Spot a step where a rule or a process fix beats AI.', icon:'none'},
-  {id:'steady',   name:'Steady hands',        d:'Match the autonomy on every step of an expedition.', icon:'review'},
-  {id:'unaided',  name:'Unaided',             d:'Finish without asking the guide to point at the evidence.', icon:'rigor'},
-  {id:'digger',   name:'Every stone turned',  d:'Interview on every step of an expedition.', icon:'interview'},
-  {id:'allbg',    name:'Three perspectives',  d:'Finish with each background.', icon:'trust'},
-  {id:'lead',     name:'Expedition lead',     d:'Reach the top rank.', icon:'mark'},
-  {id:'quickwin', name:'Quick to the win',    d:'Pitch a case the field rates a quick win.', icon:'spark'},
-  {id:'ontime',   name:'Ahead of schedule',   d:'Finish with three or more weeks to spare.', icon:'weeks'},
-];
-
-/* ---------------------------------------------------------------------
-   Field guide hints. Tier 1 is a question; tier 2 points at the evidence.
-   --------------------------------------------------------------------- */
 const HINTS = {
   dimAsk:{
     shape:'Set the systems aside. What does the person actually produce at the end of this step?',
@@ -351,3 +235,20 @@ const HINTS = {
   missMatch:'Last step the capability missed. Read the shape you chose, then look in that family first.',
   missProfile:'Last step\u2019s read was some way off. Re-read the pain before you choose: it usually points at the shape.',
 };
+
+/* Complications are drawn from these slots: one part way through a walk,
+   one before the finished map. Scores (s) label the feedback only. */
+const COMPLICATION_SLOTS = [['trail'], ['data','team','metric']];
+
+const MARKS = [
+  {id:'first',     icon:'flag',      name:'First map',              d:'Finish walking a process.'},
+  {id:'flagships', icon:'map',       name:'The four flagships',     d:'Walk all four flagship processes.'},
+  {id:'offpath',   icon:'route',     name:'Off the beaten path',    d:'Walk a process beyond the flagships.'},
+  {id:'saidno',    icon:'x',         name:'Knowing when not to',    d:'Call a step \u201cnot an LLM job\u201d when the field agrees.'},
+  {id:'inagree',   icon:'check',     name:'In step with the field', d:'Match the field\u2019s LLM call on every step of a process.'},
+  {id:'steady',    icon:'review',    name:'Measured autonomy',      d:'Match the field\u2019s autonomy on every step of a process.'},
+  {id:'digger',    icon:'interview', name:'Every voice heard',      d:'Hear from the floor on every step of a process.'},
+  {id:'coolhead',  icon:'trust',     name:'Cool head',              d:'Give the strong answer to both complications in a walk.'},
+  {id:'ownmap',    icon:'doc',       name:'Your own ground',        d:'Map a process of your own.'},
+  {id:'further',   icon:'spark',     name:'Taken further',          d:'Export a map or copy it for LPP.'},
+];

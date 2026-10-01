@@ -55,6 +55,13 @@ const ICON_PATHS = {
   x:          '<path d="M6 6l12 12M18 6L6 18"/>',
   plug:       '<path d="M9 2v6M15 2v6"/><path d="M6 8h12v3a6 6 0 0 1-12 0z"/><path d="M12 17v5"/>',
   route:      '<circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8 17.5c4-2 3-7 7-9.5"/>',
+  arrow:      '<path d="M4 12h15M13 6l6 6-6 6"/>',
+  chev:       '<path d="M9 5l7 7-7 7"/>',
+  home:       '<path d="M3 11l9-7 9 7"/><path d="M5 9.5V20h14V9.5"/>',
+  download:   '<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 20h16"/>',
+  copy:       '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+  trash:      '<path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13"/>',
+  plus:       '<path d="M12 5v14M5 12h14"/>',
 };
 function icon(name, cls){
   const d = ICON_PATHS[name] || ICON_PATHS.compass;
