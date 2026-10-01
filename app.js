@@ -77,6 +77,7 @@ function render(){
   else if(S.mode==='guided'){ mount(withRail(viewGuided(), railGuided())); }
   else { mount(withRail(viewApply(), railApply())); }
   renderModal();
+  maybeNudge();
   window.scrollTo({top:0});
 }
 
@@ -162,12 +163,12 @@ function viewHero(){
       `).join('')}
     </svg>
 
-    <p class="note">You'll lead a team at a fictional distributor, survey where the real pain lives, pick one process to take apart step by step, match each step to the type of capability it needs &mdash; not a brand &mdash; then size the risk and build a one-page case worth pitching.</p>
+    <p class="note">You'll lead the search for AI use cases at Meridian Reserve Bank, survey where the real pain lives, pick one process to take apart step by step, match each step to the type of capability it needs &mdash; not a brand &mdash; then size the risk and build a one-page case worth pitching.</p>
 
     <div class="modes">
       <button class="mode" data-act="start-guided">
         <span class="n">Take the guided expedition</span>
-        <span class="d">Walk a fictional distributor's processes, dissect the work, and learn the method as you go. ~20&ndash;30 minutes.</span>
+        <span class="d">Walk Meridian Reserve Bank's real processes, dissect the work, and learn the method as you go. ~20&ndash;30 minutes.</span>
         <span class="go">Start the expedition &rarr;</span>
       </button>
       <button class="mode" data-act="start-apply">
@@ -248,30 +249,33 @@ function viewTerrainIntro(){
 }
 
 function viewTerrainMap(){
-  const chainFns = FUNCTIONS.filter(f=>f.chain);
-  const supportFns = FUNCTIONS.filter(f=>!f.chain);
   const stationBtn = f=>{
     const n = f.processes.length;
     const shortlisted = f.processes.filter(p=>S.shortlist.includes(p.id)).length;
     return `<button class="station ${S.viewFn===f.id?'on':''}" data-act="view-fn" data-fn="${f.id}">
       ${shortlisted? `<span class="hot">${shortlisted}</span>`:''}
+      <span class="ico-wrap">${icon(f.icon,'lg')}</span>
       <span class="n">${esc(f.name)}</span>
       <span class="c">${n} process${n===1?'':'es'}</span>
     </button>`;
   };
+  const bands = MAP_GROUPS.map(g=>{
+    const fns = FUNCTIONS.filter(f=>f.group===g.id);
+    if(!fns.length) return '';
+    return `<div class="band">
+      <div class="bandhead"><span class="n">${esc(g.label)}</span><span class="d">${esc(g.d)}</span></div>
+      <div class="stations">${fns.map(stationBtn).join('')}</div>
+    </div>`;
+  }).join('');
   const detail = S.viewFn ? viewFnDetail(FUNCTIONS.find(f=>f.id===S.viewFn)) : `
-    <p class="note muted">Click a part of the business to see what's happening inside it. Shortlist up to three processes across the whole map &mdash; the ones you'd want to investigate first &mdash; before moving on.</p>`;
+    <p class="note muted">Click a part of the Bank to see what's happening inside it. Shortlist up to three processes across the whole map &mdash; the ones you'd want to investigate first &mdash; before moving on.</p>`;
   return `
   <div class="stagehead">
     <div class="k muted">Survey the terrain</div>
-    <h2>Where is the business, and what's happening in it?</h2>
+    <h2>Where is the Bank, and what's happening in it?</h2>
     <p class="lead">Click around. Read the signals. Shortlist up to three processes you'd want to investigate first.</p>
   </div>
-  <p class="maplabel">The value chain</p>
-  <div class="map">
-    <div class="chain">${chainFns.map(stationBtn).join('')}</div>
-    <div class="support">${supportFns.map(stationBtn).join('')}</div>
-  </div>
+  <div class="map">${bands}</div>
   ${detail}
   <div class="actions">
     <span class="tiny muted">Shortlisted: ${S.shortlist.length} of 3</span>
@@ -282,7 +286,7 @@ function viewTerrainMap(){
 function viewFnDetail(fn){
   return `
   <div class="panel">
-    <h3>${esc(fn.name)}</h3>
+    <h3 class="fnhead">${icon(fn.icon,'lg')}<span>${esc(fn.name)}</span></h3>
     <div class="brief">
       <div>
         <p>${esc(fn.brief)}</p>
@@ -337,10 +341,10 @@ function viewTerrainReveal(){
 }
 
 function viewPickExpedition(){
-  const opts = ['A','B','C'].map(id=>{
+  const opts = Object.keys(PROCESSES).map(id=>{
     const p = PROCESSES[id];
     return `<button class="pick" data-act="pick-expedition" data-proc="${id}">
-      <span class="fn">${esc(p.fn)}</span>
+      <span class="fn">${icon(p.fnId,'sm')} ${esc(p.fn)}</span>
       <span class="n">${esc(p.name)}</span>
       <span class="d">${p.steps.length} steps to dissect, from first contact to resolution.</span>
     </button>`;
@@ -349,7 +353,7 @@ function viewPickExpedition(){
   <div class="stagehead">
     <div class="k muted">Choose an expedition</div>
     <h2>Pick one process to take apart</h2>
-    <p class="lead">All three of these rated highest on the map. Depth beats breadth: pick one and walk every step of it.</p>
+    <p class="lead">These all rated highest on the map. Depth beats breadth: pick one and walk every step of it.</p>
   </div>
   <div class="pickgrid">${opts}</div>`;
 }
@@ -411,6 +415,7 @@ function viewStepProfile(step){
     <p class="tiny muted">Look again at what you just read, then describe the work on four dimensions. There's no trick here &mdash; describe it as you actually see it.</p>
     ${DIMS.map(d=>chipSingle(d, d.opts, p[d.id], 'profile')).join('')}
   </div>
+  <div id="nudgeSlot"></div>
   <div class="actions"><button class="btn" data-act="submit-profile" ${ready?'':'disabled'}>Compare with the expert view &rarr;</button></div>`;
 }
 
@@ -438,7 +443,7 @@ function viewStepProfileReveal(step){
 function viewStepMatch(step){
   const groups = CAP_FAMILIES.map(fam=>`
     <div class="fam ${fam.id==='none'?'none':''}">
-      <h4>${esc(fam.name)}</h4>
+      <h4>${icon(fam.id,'sm')} ${esc(fam.name)}</h4>
       <div class="chips">
         ${fam.caps.map(cid=>`<button class="chip ${S.curCap===cid?'on':''}" data-act="pick-cap" data-cap="${cid}">${esc(CAPS[cid].name)}</button>`).join('')}
       </div>
@@ -463,6 +468,7 @@ function viewStepMatch(step){
   ${capInfo}
   <h3 style="margin-top:22px">How much should it act on its own?</h3>
   <div class="chips">${autoOpts}</div>
+  <div id="nudgeSlot"></div>
   <div class="actions"><button class="btn" data-act="submit-match" ${ready?'':'disabled'}>Reveal the expert take &rarr;</button></div>`;
 }
 
@@ -625,6 +631,36 @@ function viewCanvas(){
   </div>`;
 }
 
+/* ================= TOOL RECOMMENDATIONS ================= */
+// Build the "suggested tools" section from the capabilities the user actually chose.
+// Renders synchronously; if AI is connected, a one-line rationale is filled in async.
+function toolRecsSection(caps, autos){
+  const uniq = Array.from(new Set(caps.filter(Boolean)));
+  const au = Array.from(new Set(autos.filter(Boolean)));
+  const tools = TOOL_RECS.suggestForCapabilities(uniq, au, ['mid']);
+  if(!tools.length) return '';
+  const note = tools.note ? `<div class="caution">${esc(tools.note)}</div>` : '';
+  const cards = tools.map(t=>TOOL_RECS.formatAsCard(t)).join('');
+
+  // Upgrade the top card with AI reasoning once (non-blocking).
+  if(AI.enabled){
+    const myToken = ++nudgeToken;
+    AI.suggestTools(uniq, au, ['mid']).then(enh=>{
+      if(myToken!==nudgeToken) return;
+      const slot = document.getElementById('toolReason');
+      if(slot && enh && enh[0] && enh[0].reasoning){
+        slot.innerHTML = `<div class="fit" style="font-style:italic;margin-top:6px">“${esc(enh[0].reasoning)}”</div>`;
+      }
+    });
+  }
+  return `
+    <h3 style="margin-top:28px">Approved tools for the capabilities you identified</h3>
+    <p class="tiny muted">Matched to the capability types you chose — brands come last, on purpose. Start from the work, not the tool.</p>
+    ${note}
+    ${cards}
+    <div id="toolReason"></div>`;
+}
+
 /* ================= DEBRIEF ================= */
 function viewDebrief(){
   const p = pct(S.score, S.maxScore);
@@ -638,6 +674,8 @@ function viewDebrief(){
   }).join('');
   const proc = curProcess();
   const takeaways = TAKEAWAYS.map(t=>`<li><b>${esc(t.h)}</b><span>${esc(t.d)}</span></li>`).join('');
+  const caps = Object.values(S.stepAnswers).map(a=>a.cap);
+  const autos = Object.values(S.stepAnswers).map(a=>a.auto);
   return `
   <div class="stagehead">
     <div class="k muted">Debrief</div>
@@ -646,12 +684,13 @@ function viewDebrief(){
   </div>
   <p class="note">${esc(rank.d)}</p>
   <div class="badges">
-    <span class="badge">Expedition: ${esc(proc.name)}</span>
+    <span class="badge">${icon(proc.fnId,'sm')} Expedition: ${esc(proc.name)}</span>
     <span class="badge">${S.marked.length} candidate${S.marked.length===1?'':'s'} carried to reality check</span>
   </div>
   <div class="bars">${bars}</div>
   <h3>Take these back to your team</h3>
   <ul class="takeaways">${takeaways}</ul>
+  ${toolRecsSection(caps, autos)}
   <div class="actions">
     <button class="btn" data-act="restart">Run another expedition</button>
     <button class="btn sec" data-act="start-apply">Apply it to your own process &rarr;</button>
@@ -735,6 +774,7 @@ function viewApplyProfile(st, ans){
     <p class="tiny muted">Describe this step on four dimensions, the way you would to someone who has never seen it.</p>
     ${DIMS.map(d=>chipSingle(d, d.opts, ans.p[d.id], 'apply')).join('')}
   </div>
+  <div id="nudgeSlot"></div>
   <div class="actions"><button class="btn" data-act="apply-submit-profile" ${ready?'':'disabled'}>See suggested capabilities &rarr;</button></div>`;
 }
 
@@ -748,7 +788,7 @@ function viewApplyDetail(st, ans){
   const cautions = sug.cautions.map(c=>`<div class="caution">${esc(c)}</div>`).join('');
   const groups = CAP_FAMILIES.map(fam=>`
     <div class="fam ${fam.id==='none'?'none':''}">
-      <h4>${esc(fam.name)}</h4>
+      <h4>${icon(fam.id,'sm')} ${esc(fam.name)}</h4>
       <div class="chips">${fam.caps.map(cid=>`<button class="chip ${ans.cap===cid?'on':''}" data-act="apply-pick-cap" data-cap="${cid}">${esc(CAPS[cid].name)}</button>`).join('')}</div>
     </div>`).join('');
   const capCard = ans.cap ? `<div class="capcard"><h4>${esc(CAPS[ans.cap].name)}</h4><p>${esc(CAPS[ans.cap].one)}</p><div class="kv"><b>Needs</b><span>${esc(CAPS[ans.cap].needs)}</span></div><div class="kv"><b>Watch for</b><span>${esc(CAPS[ans.cap].watch)}</span></div></div>` : '';
@@ -804,6 +844,8 @@ function viewApplyCanvas(){
       </div>
     </div>`;
   }).join('');
+  const caps = Object.values(S.applyAnswers).map(a=>a.cap);
+  const autos = Object.values(S.applyAnswers).map(a=>a.auto);
   return `
   <div class="stagehead">
     <div class="k muted">Your canvas</div>
@@ -811,6 +853,7 @@ function viewApplyCanvas(){
     <p class="lead">${esc(S.applyOrg)} &mdash; one card per step, ready to bring into a planning conversation.</p>
   </div>
   ${rows}
+  ${toolRecsSection(caps, autos)}
   <div class="actions">
     <button class="btn sec" data-act="print-canvas">Print / save this page</button>
     <button class="btn" data-act="restart">Start a new expedition</button>
@@ -818,30 +861,97 @@ function viewApplyCanvas(){
 }
 
 /* ================= AI & SETTINGS ================= */
-function showNudge(text, type=""){
+function showNudge(text, type="", label="Hint"){
   if(!text) return "";
-  return `<div class="nudge ${type}"><div class="ico">${icon("spark","sm")}</div><div><b>Hint:</b> ${esc(text)}</div></div>`;
+  return `<div class="nudge ${type}"><div class="ico">${icon("spark","sm")}</div><div><b>${esc(label)}:</b> ${esc(text)}</div></div>`;
 }
-function renderAISettings(){
-  const wrap = document.getElementById("aiSettings");
-  if(!wrap.hidden) return;
-  wrap.hidden = false;
+
+// Reflect connection state in the fixed ⚙ AI pill.
+function updateAIPill(){
+  const dot = document.getElementById("aiPillDot");
+  if(dot) dot.classList.toggle("on", !!AI.enabled);
+  const btn = document.getElementById("aiSettingsBtn");
+  if(btn) btn.title = AI.enabled ? ("AI connected · " + AI.model) : "AI not connected (game still works) — click to set up";
 }
+
 async function connectAI(){
-  const base = document.getElementById("aiBase").value.trim();
   const model = document.getElementById("aiModel").value.trim();
+  const key = document.getElementById("aiKey").value.trim();
   const status = document.getElementById("aiStatus");
-  status.textContent = "Connecting...";
-  AI.baseURL = base || "http://localhost:11434/v1";
+  status.textContent = "Connecting…";
+  status.style.color = "var(--ink-3)";
   if(model) AI.model = model;
+  if(key) AI.apiKey = key;
   const ok = await AI.init();
+  AI.saveSettings();
+  updateAIPill();
   if(ok){
     status.textContent = `✓ Connected. Model: ${AI.model}`;
     status.style.color = "var(--forest-2)";
-    setTimeout(()=>{ document.getElementById("aiSettings").hidden = true; }, 800);
+    maybeNudge();
+    setTimeout(()=>{ document.getElementById("aiSettings").hidden = true; }, 900);
   } else {
-    status.textContent = "✗ Could not connect to " + AI.baseURL;
+    status.textContent = "✗ Could not connect to Together.ai. Check the model id and key.";
     status.style.color = "var(--marker)";
+  }
+}
+
+/* ---- Nudges: static hand-written hint always; AI personalizes when connected ---- */
+let nudgeToken = 0; // guards against a stale async response overwriting a newer screen
+
+// What's missing / what to look at, with no AI needed.
+function staticNudge(){
+  if(S.mode==='guided' && S.stage==='step'){
+    const step = curStep();
+    if(S.stepPhase==='profile'){
+      const missing = DIMS.filter(d=>!S.curProfile[d.id]);
+      if(missing.length) return {text:`To continue, describe this step on: ${missing.map(d=>d.label.toLowerCase()).join(', ')}. Re-read the pain — “${step.pain}” — and answer as you actually see it.`, type:''};
+      return {text:`All four set. Before you compare, ask: does the pain (“${step.pain}”) really come from the shape you picked?`, type:''};
+    }
+    if(S.stepPhase==='match'){
+      if(!S.curCap && !S.curAuto) return {text:`Judge by the shape of the work, not the brand. What is the person mainly doing here — reading, sorting, writing, checking?`, type:''};
+      if(!S.curCap) return {text:`Pick the capability family that matches the work, then the specific capability inside it.`, type:''};
+      if(!S.curAuto) return {text:`Now set autonomy. The higher the stakes, the more a person should stay in the loop.`, type:'hint-next'};
+      return {text:`Both set — reveal the expert take when you're ready.`, type:'hint-next'};
+    }
+  }
+  if(S.mode==='apply' && S.stage==='apply-walk'){
+    const ans = S.applyAnswers[S.applyIndex] || {p:{}};
+    if(S.applyPhase==='profile'){
+      const missing = DIMS.filter(d=>!ans.p[d.id]);
+      if(missing.length) return {text:`Describe this step on: ${missing.map(d=>d.label.toLowerCase()).join(', ')}. The suggestions on the next screen come straight from these answers.`, type:''};
+      return {text:`All four set — see what capabilities this shape of work suggests.`, type:'hint-next'};
+    }
+    if(S.applyPhase==='detail'){
+      if(!ans.cap) return {text:`Choose a capability — start from the suggestions, which are matched to how you profiled the step.`, type:''};
+      if(!ans.auto) return {text:`Set how much it should act on its own, then record a metric that would prove it worked.`, type:'hint-next'};
+    }
+  }
+  return null;
+}
+
+// Inject the static hint synchronously; if AI is connected, upgrade it async.
+function maybeNudge(){
+  const slot = document.getElementById('nudgeSlot');
+  if(!slot) return;
+  const base = staticNudge();
+  slot.innerHTML = base ? showNudge(base.text, base.type) : '';
+
+  if(!AI.enabled) return;
+  const myToken = ++nudgeToken;
+
+  if(S.mode==='guided' && S.stage==='step' && (S.stepPhase==='profile' || S.stepPhase==='match')){
+    const step = curStep();
+    AI.nudge(step.name, step.notes, step.pain).then(text=>{
+      if(text && myToken===nudgeToken){ slot.innerHTML = showNudge(text, 'hint-ai', 'AI nudge'); }
+    });
+  } else if(S.mode==='apply' && S.stage==='apply-walk' && S.applyPhase==='profile'){
+    const st = S.applySteps[S.applyIndex];
+    if(st && st.name){
+      AI.nudge(st.name, st.notes||'', '').then(text=>{
+        if(text && myToken===nudgeToken){ slot.innerHTML = showNudge(text, 'hint-ai', 'AI nudge'); }
+      });
+    }
   }
 }
 
@@ -868,6 +978,20 @@ function handleAction(ds, target){
   const act = ds.act;
   switch(act){
     case 'restart': resetAll(); render(); return;
+
+    case 'ai-settings': {
+      const m = document.getElementById('aiModel'); if(m) m.value = AI.model || '';
+      const k = document.getElementById('aiKey'); if(k) k.value = '';
+      const status = document.getElementById('aiStatus');
+      if(status){
+        status.textContent = AI.enabled ? `✓ Connected. Model: ${AI.model}` : 'Not connected. Nudges use built-in hints until you connect.';
+        status.style.color = AI.enabled ? 'var(--forest-2)' : 'var(--ink-3)';
+      }
+      document.getElementById('aiSettings').hidden = false;
+      return;
+    }
+    case 'ai-cancel': document.getElementById('aiSettings').hidden = true; return;
+    case 'ai-connect': connectAI(); return;
     case 'start-guided': S.mode='guided'; S.stage='terrain-intro'; render(); return;
     case 'start-apply': S.mode='apply'; S.stage='apply-setup'; render(); return;
 
@@ -1049,7 +1173,7 @@ function bindInputs(root){
 }
 
 /* ================= INIT ================= */
-document.addEventListener('DOMContentLoaded', ()=>{
+function boot(){
   const app = document.getElementById('app');
   app.addEventListener('click', e=>{
     const t = e.target.closest('[data-act]');
@@ -1057,79 +1181,40 @@ document.addEventListener('DOMContentLoaded', ()=>{
     handleAction(t.dataset, t);
   });
   bindInputs(app);
+
   document.getElementById('modal').addEventListener('click', e=>{
     if(e.target.id==='modal') return; // no backdrop-close: force a choice
     const t = e.target.closest('[data-act]');
     if(!t) return;
     handleAction(t.dataset, t);
   });
-  render();
-});
 
-})();
+  // AI settings button (lives outside #app so render() can't wipe it)
+  const aiBtn = document.getElementById('aiSettingsBtn');
+  if(aiBtn) aiBtn.addEventListener('click', ()=> handleAction({act:'ai-settings'}, aiBtn));
 
-/* Override debrief to add tool suggestions */
-const viewDebriefOrig = typeof viewDebrief === 'function' ? viewDebrief : null;
-function viewDebriefEnhanced(){
-  const orig = viewDebriefOrig();
-  
-  // Extract capabilities from answers
-  const caps = new Set();
-  const autos = new Set();
-  Object.values(S.stepAnswers).forEach(ans=>{
-    if(ans.cap) caps.add(ans.cap);
-    if(ans.auto) autos.add(ans.auto);
-  });
-  
-  const tools = TOOL_RECS.suggestForCapabilities(Array.from(caps), Array.from(autos), ['mid']);
-  let toolSection = '';
-  if(tools.length){
-    toolSection = `
-    <h3 style="margin-top:24px">Suggested tools for your capabilities</h3>
-    <p class="tiny muted">Based on the capabilities you identified, here are tools that could help:</p>
-    ${tools.map(t=>TOOL_RECS.formatAsCard(t)).join('')}
-    `;
-  }
-  
-  // Insert tool section before the closing actions div
-  return orig.replace('<div class="actions">', toolSection + '<div class="actions">');
-}
-viewDebrief = viewDebriefEnhanced;
-
-
-/* Initialize AI on page load */
-const origDOMLoad = function(){
-  const app = document.getElementById('app');
-  app.addEventListener('click', e=>{
-    const t = e.target.closest('[data-act]');
-    if(!t) return;
-    handleAction(t.dataset, t);
-  });
-  bindInputs(app);
-  document.getElementById('modal').addEventListener('click', e=>{
-    if(e.target.id==='modal') return;
-    const t = e.target.closest('[data-act]');
-    if(!t) return;
-    handleAction(t.dataset, t);
-  });
-  const aiSettingsModal = document.getElementById('aiSettings');
-  if(aiSettingsModal){
-    aiSettingsModal.addEventListener('click', e=>{
-      if(e.target.id==='aiSettings'){ aiSettingsModal.hidden = true; return; }
+  const aiModal = document.getElementById('aiSettings');
+  if(aiModal){
+    aiModal.addEventListener('click', e=>{
+      if(e.target.id==='aiSettings'){ aiModal.hidden = true; return; } // backdrop closes settings
       const t = e.target.closest('[data-act]');
       if(!t) return;
       handleAction(t.dataset, t);
     });
   }
-  // Initialize AI in the background
-  AI.init().then(ok=>{ 
-    if(ok) console.log('AI ready for nudges'); 
-  });
+
   render();
-};
-if(document.readyState === 'loading'){
-  document.addEventListener('DOMContentLoaded', origDOMLoad);
-} else {
-  origDOMLoad();
+
+  // Connect to Together.ai in the background; refresh nudges + pill on success.
+  AI.loadSettings();
+  AI.init().then(ok=>{ updateAIPill(); if(ok) maybeNudge(); });
 }
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', boot);
+} else {
+  boot();
+}
+
+})();
 

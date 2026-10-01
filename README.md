@@ -15,74 +15,55 @@ Then **apply** the same method to your own processes.
 ✨ **Visual polish:**
 - Smooth CSS transitions and tactile feedback on every interaction
 - Icons for each organizational function (Economists, Researchers, IT, HR, Benefits, Facilities, Events, Law Enforcement)
-- Sleek, modern UI with refined typography and hover states
-- Function icons integrated into terrain map and process selection
+- Terrain map grouped into three bands — the mission, running the buildings, supporting the people
+- Sleek, modern UI with refined typography, hover states and a connection pill
+- Function icons integrated into the terrain map, process selection and capability families
 
-🤖 **AI Integration:**
-- Connect to any OpenAI-compatible local LLM (Ollama, etc.)
-- Contextual nudges while analyzing steps
-- Personalized hints when struggling
-- Dynamic tool recommendations at the end based on identified capabilities
+🤖 **AI Integration (Together.ai):**
+- Connects to Together.ai (OpenAI-compatible) out of the box
+- Contextual nudges while profiling and matching each step
+- A hand-written static hint always shows what a section needs — so the game works fully even when AI is offline
+- Dynamic tool recommendations at the end, with an optional one-line AI rationale
+- Model and API key can be changed in the ⚙ AI panel (saved in your browser)
 
 🛠 **Tool Recommendations:**
-Suggests tools from your approved list:
-- **LPP** (Airgapped suite: Claude, Llama, Mistral, Nova)
-- **LPP Plus** (with agent functionality)
-- **Copilot for Gov Community Cloud**
-- **CodeHelper** (Claude Code in terminal/VS Code)
-- **Copilot Studio** (low-code agent builder)
+Suggests tools from the approved inventory, matched to the capability types you identified:
+- **LPP** — airgapped LLM suite (Claude, Grok, Nemotron, Llama, Nova Pro, GPT OSS)
+- **LPP Plus** — LPP with agent functionality
+- **Copilot for Government Community Cloud**
+- **CodeHelper** — Claude Code in Terminal / VS Code
+- **Copilot Studio** — low-code agents for MCP/API integration
 
 ## Files
 
-- `index.html` — Main entry point with modals
-- `styles.css` — Enhanced CSS with transitions, icons, and animations
-- `data.js` — Meridian Reserve Bank configuration (2,400 staff, 8 functions, 4 deep-dive processes)
-- `icons.js` — SVG icon library (function icons, autonomy levels, UI elements)
-- `app.js` — Game logic, state machine, view rendering
-- `engine.js` — Scoring and suggestion engine (copied from v1, unchanged)
-- `ai.js` — AI connection, nudge generation, tool matching
+- `index.html` — Main entry point with modals and the ⚙ AI pill
+- `styles.css` — Enhanced CSS with transitions, icons, bands, and the connection pill
+- `data.js` — Meridian Reserve Bank configuration (2,400 staff, 8 functions, 4 deep-dive processes A–D)
+- `icons.js` — SVG icon library (function icons, capability families, UI elements)
+- `app.js` — Game logic, state machine, view rendering, nudges, tool recommendations
+- `engine.js` — Scoring and suggestion engine (unchanged from v1)
+- `ai.js` — Together.ai connection, nudge generation, tool inventory + matching
 
 ## Local Setup
 
-### 1. Basic (no AI)
+### Run it (AI works out of the box)
 ```bash
 cd groundwork2
 python -m http.server 8000
 # Visit http://localhost:8000
 ```
+The game serves as static files — any static host or local server works. The Together.ai
+key is built in, so nudges and tool reasoning are on by default.
 
-### 2. With AI Nudges (Ollama)
+### AI connection (Together.ai)
+- Click **⚙ AI** (top-right pill). Green dot = connected.
+- You can override the **model** (any Together.ai chat/instruct model id) and the **API key**.
+  Both are saved in your browser's `localStorage` only.
+- If Together.ai is unreachable, the game still runs: every step falls back to a
+  hand-written static hint, and the ending still recommends tools from the capability match.
 
-**Install Ollama:**
-```bash
-# macOS: https://ollama.ai
-# Linux: curl -fsSL https://ollama.ai/install.sh | sh
-# Windows: https://ollama.ai/download/windows
-```
-
-**Start Ollama with CORS:**
-```bash
-# macOS/Linux:
-OLLAMA_ORIGINS="*" ollama serve
-
-# Or, first pull a small model:
-ollama pull mistral  # or: llama2, neural-chat, orca-mini
-OLLAMA_ORIGINS="*" ollama serve
-```
-
-**Start the game:**
-```bash
-python -m http.server 8000
-# Visit http://localhost:8000
-# Click ⚙ AI → connect (default: http://localhost:11434/v1)
-```
-
-Models tested:
-- `mistral` (7B, fast, good)
-- `neural-chat` (7B, conversational)
-- `orca-mini` (3B, quick, airgapped-friendly)
-- `llama2` (7B, Ollama default)
-- `phi` (2.7B, very fast)
+> **Note:** the default API key is hardcoded in `ai.js` for convenience. Anyone who opens the
+> page can read it. Before any public/GitHub deploy, move the key out and rotate it.
 
 ## Deployment
 
@@ -104,19 +85,22 @@ cp -r groundwork2/* /var/www/groundwork/
 ```
 
 ### Airgapped (no internet)
-1. Fonts must be bundled locally (see `styles.css`, lines with `@import`)
-2. Ollama or another LLM must be running locally
-3. Remove CORS headers from Ollama if proxy blocks them
+The game itself is fully static and runs with no connection. Only the AI nudges and the
+optional one-line tool rationale call out to Together.ai — everything else, including the
+static hints and the tool recommendations, works offline.
+1. Bundle the fonts locally (they load from `fonts.googleapis.com` in `index.html`)
+2. If Together.ai is not reachable, leave AI disconnected — the static hints take over
 
 ## For Your Organization
 
 ### Adapting the Data
 Edit `data.js`:
-- **COMPANY.name**, **COMPANY.staff**, **COMPANY.description** — your org
-- **FUNCTIONS** — change the 8 functions to match your structure
-- **PROCESSES** — replace the 4 deep-dive processes
+- **COMPANY.name**, **COMPANY.blurb**, **COMPANY.role** — your org
+- **FUNCTIONS** — change the 8 functions to match your structure (each has `group` + `icon`)
+- **MAP_GROUPS** — the three terrain bands functions are grouped into
+- **PROCESSES** — replace the deep-dive processes (keyed A, B, C, D …)
 - **CAPS** — keep or customize the 15 AI capability types
-- **DIMS** — keep the 8 task dimensions (they're universal)
+- **DIMS** — keep the 4 task dimensions (they're universal)
 
 ### Customizing Icons
 Edit `icons.js` to add your org's icon set. Modify the SVG paths for function icons, add new capabilities, etc.
@@ -132,7 +116,8 @@ In `data.js`, add to the `PROCESSES` array. Each process needs:
 - `id`, `name`, `fnId` (which function owns it)
 - `steps[]` — array of step objects with full scaffolding
 
-Follow the existing format in `PROCESSES[0]` (pre-meeting briefing).
+Follow the existing format in `PROCESSES.A` (pre-meeting briefing). The expedition picker
+offers every key in `PROCESSES` automatically, so adding `E:` makes a fifth expedition appear.
 
 ## Architecture
 
@@ -159,11 +144,13 @@ hero → terrain-intro → terrain-map → terrain-reveal
 - **Canvas** — guardrail selections: up to 3pts
 
 ### AI Integration
-- `AI.init()` — connects to Ollama (background, non-blocking)
+- `AI.init()` — connects to Together.ai (background, non-blocking)
+- `AI.loadSettings()` / `AI.saveSettings()` — persist model + key in `localStorage`
 - `AI.nudge(step, notes, pain)` — generates contextual hints
 - `AI.reflect(step, profile, expert)` — gives feedback on accuracy
-- `AI.suggestTools()` — matches capabilities to your approved tools
-- Nudges appear in `.nudge` divs; tool cards in `.toolcard` divs
+- `AI.suggestTools()` — matches capabilities to the approved tools, adds a one-line rationale
+- `maybeNudge()` (app.js) — shows the static hint, then upgrades it with an AI nudge if connected
+- Nudges appear in `#nudgeSlot`; tool cards use `.toolcard`; connection shows in the `.aipill`
 
 ## Browser Support
 - Chrome/Edge 90+
@@ -173,32 +160,31 @@ hero → terrain-intro → terrain-map → terrain-reveal
 
 ## Customizations We Can Help With
 
-1. **More processes** — add 5th, 6th process for your org
+1. **More processes** — add a 5th, 6th process for your org
 2. **Guided hints** — write org-specific nudges for each step
 3. **Tool matching** — refine the algorithm that suggests tools
 4. **UI reskinning** — colors, fonts, layout
-5. **Offline bundle** — embed fonts and Ollama model
+5. **Offline bundle** — embed the fonts for a fully airgapped build
 6. **Export reports** — PDF or email summaries of findings
 
 ## Troubleshooting
 
-### "AI: no connection"
-- Is Ollama running? `ollama serve` (with `OLLAMA_ORIGINS="*"`)
-- Is the URL correct? Default is `http://localhost:11434/v1`
-- Is CORS enabled? Set `OLLAMA_ORIGINS="*"` before `ollama serve`
+### AI pill dot stays grey (not connected)
+- Open **⚙ AI** and check the model id is a valid Together.ai chat/instruct model
+- Confirm the API key (the built-in one, or your override) is still valid
+- The game still works disconnected — static hints and tool recommendations continue
 
 ### Fonts not loading
 - Check browser console for 404s on fonts.googleapis.com
-- For airgapped: download fonts locally and update `styles.css`
+- For airgapped: download the fonts locally and update `index.html`
 
-### Slow rendering
-- Clear browser cache
-- Check if Ollama model is large (7B+ can be slow on old hardware)
-- Use a smaller model: `orca-mini`, `phi`, or offline (no AI)
+### Nudges feel slow
+- The static hint is instant; the AI nudge replaces it when the model responds
+- Pick a faster/smaller Together.ai model in ⚙ AI if responses lag
 
 ### Tool recommendations not showing
-- Make sure capabilities were identified in the profile steps
-- Check console for errors in `TOOL_RECS.suggestForCapabilities()`
+- Make sure capabilities were chosen on the match steps
+- Check the console for errors in `TOOL_RECS.suggestForCapabilities()`
 
 ## License & Use
 
