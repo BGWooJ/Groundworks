@@ -524,38 +524,7 @@ const PROCESSES = {
   ]},
 };
 
-/* ---------- Trail events: the traps ---------- */
-const EVENTS = {
-  E1:{title:'The demo', text:'A senior leader saw a vendor demo last week and now wants "a chatbot for the Bank" live before the next leadership meeting. Your sponsor asks you to make it happen.',
-    opts:[{t:'Start scoping the chatbot. It is what leadership asked for.', s:0, fb:'A chatbot is a capability, not a use case. Without a process and a step, you will build a front door to nothing in particular.'},
-          {t:'Ask which process it would improve and which step, then evaluate a conversational assistant alongside the other capability types for that step.', s:2, fb:'Tools are answers. You do not have a question yet. Anchor the request to a step in a process and the right capability may or may not be a chatbot.'},
-          {t:'Push back: chatbots do not work.', s:0, fb:'Some do, in the right place. Dismissing the tool is the same mistake as worshipping it: it skips the work.'}]},
-  E2:{title:'The brand name', text:'A colleague insists the Bank needs one specific, well-known product. "Every other institution uses it. Just buy it and move on."',
-    opts:[{t:'Buy it. A known brand is the safe choice.', s:0, fb:'Brands change, get acquired and get outrun. Buying before you know what the step needs makes the tool the requirement.'},
-          {t:'Write down the capability the step needs (what it must read, decide or produce, at what accuracy, volume and sensitivity), then evaluate any option, including that one, against it.', s:2, fb:'The capability requirement outlives any vendor. It also makes the comparison honest, and it is the thing you can hand to procurement.'},
-          {t:'Ban vendors and build everything in-house.', s:0, fb:'Building is a valid option for some capabilities, but deciding it before you know the requirement is the same error in a different jacket.'}]},
-  E7:{title:'The paste', text:'An economist, trying to save an afternoon, is about to paste a draft section of the briefing memo into a public AI tool to tighten the prose.',
-    opts:[{t:'Let it go. It is only a draft, and the tool is good.', s:0, fb:'A draft of the most sensitive document in the building just left the building. Sensitivity attaches to the information, not to the version.'},
-          {t:'Stop it, and treat it as a signal: classify the information first, and give people an approved environment for exactly this kind of help.', s:2, fb:'People route around missing tools. Decide what may leave, what may not, and what may never be seen by a tool at all, then provide an inside option, or the paste happens again with nobody watching.'},
-          {t:'Ban AI tools for economists.', s:1, fb:'It closes one door and teaches nothing. The need is real; the answer is an approved way to meet it.'}]},
-  E3:{title:'The workaround', text:'Digging into a step, you find it exists because two systems do not share a field. Somebody re-keys the same information every day, and has for six years.',
-    opts:[{t:'Automate the re-keying with an agent. Fast relief.', s:1, fb:'It works, and sometimes it is the pragmatic bridge. But you have now bought a tool to preserve a defect. Note the real fix and a date to make it.'},
-          {t:'Fix the integration or the form so the field flows through, then see what work is left.', s:2, fb:'Remove the cause and the step may vanish. Automating a broken process only makes it break faster.'},
-          {t:'Add a second person to check the re-keying.', s:0, fb:'Now two people preserve the defect.'}]},
-  E4:{title:'The spreadsheet archipelago', text:'The "data" a use case depends on turns out to live in fourteen personal spreadsheets with different column names, two of which belong to someone who retired in March.',
-    opts:[{t:'Feed the spreadsheets to a model and see what comes out.', s:0, fb:'What comes out will look plausible and be wrong in ways nobody can check. Uncaptured or inconsistent data is a step-zero problem, not something a model fixes.'},
-          {t:'Treat data capture as step zero: agree where the data lands and in what shape, then pilot on the subset that is already clean.', s:2, fb:'Most use cases that fail, fail here. Capturing the data properly is unglamorous, and it is the work.'},
-          {t:'Drop the use case.', s:1, fb:'Sometimes right, but check the size of the prize first. If the value is large, a data-capture project is the first phase, not a reason to stop.'}]},
-  E5:{title:'The team meeting', text:'You present the idea to the team whose work it touches. The room goes quiet. Someone asks whether this means job cuts.',
-    opts:[{t:'Reassure them that nothing will change.', s:0, fb:'Something will change, or why do it? People can tell. Vague reassurance costs you the trust you need for the pilot.'},
-          {t:'Be specific: which tasks change, what they will do with the time, how they will be involved in testing, and how errors will be caught.', s:2, fb:'Specifics are respect. The people who do the work today are also the only ones who can tell you when the tool is wrong.'},
-          {t:'Present it to their manager only, next time.', s:0, fb:'The tool will be judged by the people who use it. Cutting them out delays the conversation and worsens it.'}]},
-  E6:{title:'The metric', text:'Your sponsor asks the question that decides whether this becomes a programme or a slide: "How will we know it worked?"',
-    opts:[{t:'Count the AI features we ship this year.', s:0, fb:'Activity, not outcome. Shipping features is easy. Changing the step is the point.'},
-          {t:'Measure the step now (time, error rate, cost per item, cycle time) and compare the pilot against that baseline.', s:2, fb:'A baseline measured before the pilot is the difference between a result and an anecdote.'},
-          {t:'Run a satisfaction survey after launch.', s:1, fb:'Useful alongside a baseline, not instead of one. Satisfaction can rise while the work gets worse.'}]},
-};
-const EVENT_TRIGGERS = {afterTerrain:'E1', afterStep2:'E2', afterStep3:'E7', afterStep4:'E3', beforeReality:'E4', beforeCanvas:'E5', beforeDebrief:'E6'};
+/* Trail events, backgrounds, endings and marks live in story.js. */
 
 /* ---------- Debrief content ---------- */
 const TAKEAWAYS = [
@@ -567,12 +536,6 @@ const TAKEAWAYS = [
   {h:'Classify the information before you connect the tool', d:'What may leave the building, what may not, and what may never be seen by a tool at all. Decide it once, write it down, and give people an approved way to get the help they want.'},
   {h:'Reality check before you pitch', d:'Data readiness, risk, change effort and integration on one axis; value on the other. Quick wins build the trust that strategic bets need.'},
   {h:'Measure the baseline before the pilot', d:'Time, error rate, cost per item, cycle time. Without a baseline you will have an anecdote, not a result.'},
-];
-const RANKS = [
-  {min:0,   name:'Day tripper',      d:'You saw the terrain. Next time, spend longer at each step before reaching for the toolkit.'},
-  {min:40,  name:'Trail scout',      d:'You can find the hotspots and name most of the work. Practise the matching and the reality check.'},
-  {min:60,  name:'Cartographer',     d:'You dissect processes well and match capabilities sensibly. The reality check is where the last points live.'},
-  {min:80,  name:'Expedition lead',  d:'You start from the work, match the capability, size the autonomy and check reality. Take a team through it.'},
 ];
 const DISCUSS = {
   terrain:'Which signal is evidence of a hotspot, and which is just loud? Agree the three before you lock them in.',

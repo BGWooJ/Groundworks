@@ -82,6 +82,21 @@ const AI = {
     }
   },
 
+  // Field guide: one short, personal hint for the decision in front of the player.
+  // Never gives the answer away. Returns null when offline.
+  async guide(ctx){
+    const prompt = `You are a calm, expert field guide in a training game about finding AI use cases in a central bank. The player is stuck on one decision. Give ONE hint of at most two short sentences that helps them think, without naming the answer. Plain, professional language. No greetings, no exclamation marks.
+
+Step: "${ctx.step||''}"
+What happens: ${ctx.notes||''}
+Measured pain: ${ctx.pain||''}
+Decision: ${ctx.decision||''}
+${ctx.choices ? 'Choices: '+ctx.choices : ''}
+${ctx.sofar ? 'What they have said so far: '+ctx.sofar : ''}`;
+    const out = await this.chat([{role:'user', content:prompt}], 0.6);
+    return out ? out.trim().replace(/^["“]|["”]$/g,'') : null;
+  },
+
   // Nudge: contextual hint for a step
   async nudge(stepName, stepNotes, stepPain, context=''){
     const prompt = `You are an expert helping someone analyze business processes for AI opportunities. Be brief, encouraging, and specific. One or two sentences max.
@@ -207,17 +222,17 @@ const TOOL_RECS = {
     return out;
   },
 
-  formatAsCard(tool){
+  formatAsCard(tool, rank){
     const iconName = {lpp:'spark', 'lpp-plus':'act', 'copilot-gov':'compass', codehelper:'route', 'copilot-studio':'gear'}[tool.id] || 'spark';
-    return `<div class="toolcard">
-      <div class="icon">${icon(iconName, 'lg')}</div>
-      <div class="text">
-        <b>${escA(tool.name)}</b>
+    return `<article class="toolcard${rank===0?' top':''}">
+      <div class="toolicon">${icon(iconName, 'lg')}</div>
+      <div class="tooltext">
+        <h4>${escA(tool.name)}</h4>
         <p>${escA(tool.why)}</p>
-        <div class="fit">Best for: ${escA(tool.bestFor)}</div>
-        ${tool.reasoning ? `<div class="fit" style="font-style:italic;margin-top:6px;">“${escA(tool.reasoning)}”</div>` : ''}
+        <p class="toolfit">Best for: ${escA(tool.bestFor)}</p>
+        ${tool.reasoning ? `<p class="toolwhy">${escA(tool.reasoning)}</p>` : ''}
       </div>
-    </div>`;
+    </article>`;
   }
 };
 
