@@ -1,3 +1,5 @@
+import {NEW_COMPACT} from './districts.js';
+import {CAPS, SHAPES, INPUTS, REPS, STAKES, AUTONOMY, GUARDRAILS, LEVELS, FUNCTIONS, PROCESSES} from './meridian.js';
 /* =====================================================================
    EXPEDITIONS
    Every process on the terrain map is playable. The four flagship
@@ -536,6 +538,9 @@ const COMPACT = {
  ]},
 };
 
+/* v5: the new districts, in the same compact form. */
+Object.assign(COMPACT, NEW_COMPACT);
+
 /* ---------------------------------------------------------------------
    Expansion
    --------------------------------------------------------------------- */
@@ -634,4 +639,5 @@ function validateExpeditions(){
   if(problems.length) console.warn('Groundwork content check found ' + problems.length + ' problem(s):\n' + problems.join('\n'));
   return problems;
 }
-try{ validateExpeditions(); }catch(e){ console.warn('Groundwork content check could not run:', e); }
+
+export {FLAGSHIP, COMPACT, getExpedition, validateExpeditions, expandStep};

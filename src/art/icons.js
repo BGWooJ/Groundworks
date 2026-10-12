@@ -1,5 +1,18 @@
 /* Icons: 24x24 line icons, stroke = currentColor. icon(name, cls) returns an <svg>. */
 const ICON_PATHS = {
+  /* v5: new departments, game controls */
+  supervision:'<path d="M3 21h18"/><path d="M4 9.5l8-5.5 8 5.5"/><path d="M6 10v8M10 10v8M14 10v8M18 10v8"/><path d="M4 18h16"/>',
+  cashops:    '<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>',
+  finance:    '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8"/><path d="M8 11h2M14 11h2M8 15h2M14 15h2M11 11h2M11 15h2"/>',
+  outreach:   '<path d="M3 10.5v3a1 1 0 0 0 1 1h2.5l5.5 4.5V5L6.5 9.5H4a1 1 0 0 0-1 1z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11"/>',
+  legal:      '<path d="M12 3.5v17M7.5 20.5h9"/><path d="M5 7.5h14"/><path d="M5 7.5l-2.8 6a2.8 2.8 0 0 0 5.6 0zM19 7.5l-2.8 6a2.8 2.8 0 0 0 5.6 0z"/>',
+  sound:      '<path d="M4 9.5v5h3.5L13 19V5L7.5 9.5z"/><path d="M16.5 9a4 4 0 0 1 0 6"/><path d="M19.5 6.5a7.5 7.5 0 0 1 0 11"/>',
+  mute:       '<path d="M4 9.5v5h3.5L13 19V5L7.5 9.5z"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5"/>',
+  user:       '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>',
+  book:       '<path d="M3.5 5h6a2.5 2.5 0 0 1 2.5 2.5V20a2 2 0 0 0-2-2H3.5z"/><path d="M20.5 5h-6A2.5 2.5 0 0 0 12 7.5V20a2 2 0 0 1 2-2h6.5z"/>',
+  star:       '<path d="M12 3.2l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17.2l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+  sparkle:    '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6"/>',
+  shieldup:   '<path d="M12 3l8 3v6c0 4.6-3.3 8.3-8 9.5C7.3 20.3 4 16.6 4 12V6z"/><path d="M8.5 13l3.5-3.5 3.5 3.5"/>',
   /* functions */
   econ:       '<polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/><path d="M4 4v16"/>',
   research:   '<circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.5" y1="15.5" x2="21" y2="21"/><path d="M8 10.5h5M10.5 8v5"/>',
@@ -67,3 +80,5 @@ function icon(name, cls){
   const d = ICON_PATHS[name] || ICON_PATHS.compass;
   return `<svg class="ico ${cls||''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 }
+
+export {ICON_PATHS, icon};

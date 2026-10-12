@@ -76,3 +76,5 @@ function stepsLabel(nums){
   if(nums.length===1) return `Step ${nums[0]}`;
   return `Steps ${nums.slice(0,-1).join(', ')} and ${nums[nums.length-1]}`;
 }
+
+export {DESTINATIONS, destOf, scoreTools, whyTool, processHeading, stepsLabel};

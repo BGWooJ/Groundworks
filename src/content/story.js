@@ -252,3 +252,5 @@ const MARKS = [
   {id:'ownmap',    icon:'doc',       name:'Your own ground',        d:'Map a process of your own.'},
   {id:'further',   icon:'spark',     name:'Taken further',          d:'Export a map or copy it for LPP.'},
 ];
+
+export {SPONSOR, GUIDANCE, EVENT_POOL, REACT, HINTS, COMPLICATION_SLOTS, MARKS};
