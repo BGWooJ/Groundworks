@@ -128,5 +128,45 @@ const ILLUS = (function(){
       L(14,92,124,92,'k t') + item(18,76) + item(40,76) + item(62,76) + item(84,76) + P('M126 78 v16 h24 v-16','k') + item(131,79,14)
       + person(40,26,{h:34}) + L(14,60,72,60,'k t') + P('M92 52 A22 22 0 0 1 136 52','k b t') + L(114,52,124,38,'k') + C(114,52,3,'bs') + L(92,52,136,52,'k m')),
   };
-  return {dept, shape, auto};
+
+  /* ---------- v5: new departments ---------- */
+  Object.assign(dept, {
+    supervision: svg('An examiner with a magnifying glass beside a bank',
+      P('M14 52 L50 32 L86 52 Z','k w') + R(18,52,64,6,'k w',1) + L(26,60,26,90) + L(40,60,40,90) + L(60,60,60,90) + L(74,60,74,90) + R(14,90,72,7,'k w',1)
+      + person(126,50) + C(100,66,11,'k b bf') + L(108,74,116,82,'k b t') + ground(98)),
+    cashops: svg('Notes fed through a counting machine, watched by an operator',
+      R(14,52,66,42) + L(22,62,72,62,'k m') + L(22,84,58,84,'k m') + R(28,34,26,14,'k b bf',2) + L(33,41,49,41,'k b')
+      + R(86,82,30,5,'k w',1) + R(86,76,30,5,'k w',1) + R(86,70,30,5,'k b bf',1)
+      + person(132,48,{dark:true}) + ground(98)),
+    finance: svg('Invoices checked against a calculator',
+      doc(16,22,38,52,{lines:4}) + doc(30,34,38,52,{lines:4,hi:[2]})
+      + R(80,50,30,40) + R(85,55,20,9,'k b bf',2) + C(88,72,2,'sk') + C(95,72,2,'sk') + C(102,72,2,'sk') + C(88,81,2,'sk') + C(95,81,2,'sk') + C(102,81,2,'bs')
+      + person(136,46) + desk(10,152,92)),
+    outreach: svg('Two people in conversation, with a note being taken',
+      person(38,48) + person(122,48,{dark:true}) + desk(12,148,90)
+      + R(56,16,48,24,'k b bf',8) + P('M70 40 L66 49 L78 40','k b bf') + L(64,25,96,25,'k b') + L(64,32,86,32,'k b')
+      + doc(68,60,24,30,{lines:2})),
+    legal: svg('A balance with a document on one side',
+      L(80,18,80,92) + L(68,92,92,92,'k t') + L(48,30,112,30,'k b t') + C(80,26,3,'bs')
+      + L(48,30,40,52,'k m') + L(48,30,56,52,'k m') + P('M34 52 H62 C60 62 36 62 34 52 Z','k w')
+      + L(112,30,104,52,'k m') + L(112,30,120,52,'k m') + P('M98 52 H126 C124 62 100 62 98 52 Z','k b bf')
+      + doc(40,36,16,16,{lines:0}) + ground(98)),
+  });
+
+  /* ---------- v5: role portraits ---------- */
+  const role = {
+    practitioner: svg('A practitioner at a desk, working through a document',
+      person(56,44) + desk(12,148,88) + doc(88,46,32,40,{lines:3,hi:[1]}) + tick(132,30) + R(20,78,26,8,'k w',2)),
+    steward: svg('A team lead with two colleagues',
+      person(80,36) + person(36,58,{h:34}) + person(124,58,{h:34,dark:true}) + flow('M56 52 C62 46 68 44 70 42') + flow('M104 52 C98 46 92 44 90 42') + ground(98)),
+    sponsor: svg('A sponsor weighing value against effort on a chart',
+      person(44,46) + desk(12,148,88) + R(80,16,66,50) + P('M88 58 V24 M88 58 H140','k m')
+      + C(104,48,4,'k w') + C(120,34,5,'k b bf') + C(132,50,3,'k w') + L(116,30,124,30,'k b')),
+    builder: svg('A builder at a screen, wiring systems together',
+      person(42,46) + desk(12,148,88) + R(72,18,74,50) + P('M88 36 L80 43 L88 50','k b t') + P('M130 36 L138 43 L130 50','k b t') + L(104,54,114,32,'k m')
+      + L(109,68,109,80) + L(96,80,122,80)),
+  };
+  return {dept, shape, auto, role};
 })();
+
+export {ILLUS};

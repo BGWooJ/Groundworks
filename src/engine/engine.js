@@ -1,3 +1,4 @@
+import {DIMS} from '../content/meridian.js';
 /* ---------- Scoring helpers (guided mode) ---------- */
 const LEVEL_IDX = {low:0, mid:1, high:2};
 
@@ -298,3 +299,5 @@ function challengesOf(a, nums){
   if(a.band==='other' && a.builder==='team') push('builder','Forecasting, optimisation and vision models are built and maintained, not used off the shelf. Who would own the model?');
   return out;
 }
+
+export {LEVEL_IDX, scoreProfile, scoreMatch, scoreReality, quadrant, suggestCaps, suggestAutonomy, suggestGuardrails, feasibilityLevel, BANDS, BAND_CAPS, bandOfCap, expertBand, bandName, WHERE, BUILDERS, SENSITIVITY, PER_MONTH, MINUTE_CHIPS, REWORK, FTE_HOURS, numbersOf, round, numbersSentence, valueOf, feasOf, VERDICTS, verdictOf, fieldVerdict, challengesOf};
