@@ -26,9 +26,9 @@ export default function Home(){
         <g className="wpts"><circle cx="640" cy="470" r="7"/><circle cx="770" cy="380" r="7"/><circle cx="860" cy="290" r="7"/><circle cx="930" cy="190" r="10" className="end"/></g>
       </svg>
       <div className="hero-copy">
-        <p className="kicker">A field game about where AI earns its keep</p>
+        <p className="kicker">A practice game about where AI helps at work</p>
         <h1>Groundwork</h1>
-        <p className="hero-line">Break a process into its steps, and find where an LLM earns its keep, where a person must stay in charge, and where something simpler wins.</p>
+        <p className="hero-line">Break a piece of work into its steps and decide, for each one, whether AI can do it, help a person do it, or whether something simpler is better.</p>
         {resume.length>0 && <div className="resume" aria-labelledby="resh">
           <p className="resume-k" id="resh"><Icon name="flag"/>Pick up where you left off</p>
           {resume.map(x=><button key={x.key} className="resume-item" onClick={()=>openItem(x)}>
@@ -36,22 +36,29 @@ export default function Home(){
             <span className="ri-go">{openLabel(x)}<Icon name="chev"/></span>
           </button>)}
         </div>}
-        <div className="hero-actions">
-          <button className={'btn big ' + (resume.length ? 'outline' : 'brass')} onClick={actions.startGuided}><Icon name="map"/>Walk a Meridian process</button>
-          <button className="btn outline big" onClick={actions.startOwn}><Icon name="plot"/>{Object.keys(J.maps).length ? 'Map a new process' : 'Map your own process'}</button>
+        <div className="startcards">
+          <button className={'startcard' + (resume.length ? '' : ' lead')} onClick={actions.startGuided}>
+            <span className="sc-i"><Icon name="map"/></span>
+            <span className="sc-b"><b>Explore Meridian</b><span>A practice bank with {FUNCTIONS.length} divisions. Pick a process, make the calls, and compare with the Guide.</span></span>
+            <span className="sc-t">About 15 min</span></button>
+          <button className="startcard" onClick={actions.startOwn}>
+            <span className="sc-i"><Icon name="plot"/></span>
+            <span className="sc-b"><b>{Object.keys(J.maps).length ? 'Map another process of your own' : 'Map your own work'}</b><span>Describe a process from your own job, step by step, and leave with a plan.</span></span>
+            <span className="sc-t">About 20 min</span></button>
         </div>
-        <p className="hero-note">{processes} processes across {FUNCTIONS.length} parts of a fictional reserve bank, each with a field view to compare against, and {FIELD_REPORTS.length} real cases from the wider world. Your own maps stay in this browser.</p>
+        <p className="hero-note"><button className="linkbtn onspruce" onClick={actions.introOpen}><Icon name="compass"/>How it works</button>{' '}
+          {processes} processes across {FUNCTIONS.length} divisions of a made-up bank, each with the Guide’s view to compare against, and {FIELD_REPORTS.length} landmark cases from real organisations. Your progress stays in this browser.</p>
       </div>
     </div>
 
     {!role && <section className="lenscall" aria-labelledby="lch">
       <div><h2 id="lch" className="h3">Choose your lens</h2>
-        <p>Groundwork is for every level of the organisation. Your lens decides what opens first on every step and which complications you are most likely to meet. You can change it any time.</p></div>
+        <p>Pick the one closest to your job. It changes what you see first, not how hard it is. Your lens decides what opens first on every step and which complications you are most likely to meet, and you can change it any time.</p></div>
       <div className="lensrow">{ROLES.map(x=><button key={x.id} className="lensmini" onClick={()=>actions.chooseRole(x.id)}><Art kind="role" id={x.id}/><b>{x.name}</b><span>{x.level}</span></button>)}</div>
     </section>}
 
     <section className="journal" aria-labelledby="jh">
-      <div className="jhead"><h2 id="jh">Field journal</h2>
+      <div className="jhead"><h2 id="jh">Logbook</h2>
         {confirmClear
           ? <div className="confirm" role="alert"><p>This removes your marks, walks, saved maps and progress from this browser. It cannot be undone.</p>
               <div className="row"><button className="btn danger small" onClick={actions.clearYes}><Icon name="trash"/>Clear everything</button><button className="btn ghost small" onClick={actions.clearNo}>Keep them</button></div></div>
@@ -63,7 +70,7 @@ export default function Home(){
             <span className="cc-art"><Art kind="role" id={P.role || 'practitioner'}/></span>
             <span className="cc-body"><span className="muted small">{role ? role.name + ', ' + role.level.toLowerCase() : 'No lens chosen yet'}</span>
               <b>{r.name}</b><Meter value={P.xp - r.floor} max={(r.next||P.xp+1) - r.floor} label="Progress to the next rank"/>
-              <span className="muted small">{P.xp} XP{r.next ? `, ${r.next - P.xp} to ${r.nextName}` : ', the highest rank'}. {collected} of {FIELD_REPORTS.length} Field Reports.</span></span>
+              <span className="muted small">{P.xp} XP{r.next ? `, ${r.next - P.xp} to ${r.nextName}` : ', the highest rank'}. {collected} of {FIELD_REPORTS.length} landmark cases.</span></span>
           </button>
           <h3 className="mt">Your maps and walks</h3>
           {work.length ? <ul className="maplist">{work.slice(0,5).map(x=><li key={x.key}><div><b>{x.title}</b><span>{x.where}. {progressLabel(x)}{x.updated ? `, ${ago(x.updated)}` : ''}</span></div>

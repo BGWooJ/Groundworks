@@ -228,7 +228,7 @@ const COMPACT = {
    p:'coordinate structured high mid', best:'agent rules', ok:'fix', auto:'review', autoOk:'assist',
    why:'An agent that takes one complete request, raises the four bookings, tracks them and flags anything unconfirmed two days out. Coordinators approve.',
    disc:[['No integrations','None of the four systems talk to each other.','An agent bridges; integration fixes. Plan both.'],['Clearance by a person','Security clearance must be submitted by a person under policy.','The agent prepares; a coordinator submits.']],
-   fv:'mid high', reality:'High value with real coordination pain. Medium feasibility across four systems: a strategic bet.',
+   fv:'mid high', reality:'High value with real coordination cost. Medium feasibility across four systems: a strategic bet.',
    metric:'Minutes per event on coordination, and events with a missing piece', g:'logging escalation rollback', hyp:'Cut coordination time by two thirds and end the day-of surprises.', data:'Access to the four systems, past events.'},
   {n:'Clear attendees with security', who:'Coordinators and desk officers', vol:'About 40,000 attendees a year', sys:'Spreadsheets, visitor management system',
    notes:'Attendee lists arrive in whatever format the host sends: spreadsheets, emails, scanned sign-up sheets. Coordinators reformat them for security, who load them into the visitor system.',

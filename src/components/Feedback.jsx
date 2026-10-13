@@ -1,4 +1,4 @@
-/* Toasts, experience pop-ups and the dialogs: complications, rank-ups and Field Reports. */
+/* Toasts, experience pop-ups and the dialogs: complications, rank-ups and landmark cases. */
 import {useEffect, useRef, useState} from 'react';
 import {m, AnimatePresence, useReducedMotion} from 'motion/react';
 import {useGame, actions, ALL_EVENTS} from '../game/store.js';
@@ -72,7 +72,7 @@ function Complication({M}){
     <p className={`vtag vt-${tag[0]}`}>{tag[1]}</p>
     <p className="dtext">{o.fb}</p>
     <StatShift d={o.d}/>
-    {r && <aside className="dreport"><span className="dr-k"><Icon name="book"/>A real case: {r.org}, {r.year}</span><b>{r.title}</b><p>{r.lesson}</p></aside>}
+    {r && <aside className="dreport"><span className="dr-k"><Icon name="book"/>A landmark case: {r.org}, {r.year}</span><b>{r.title}</b><p>{r.lesson}</p></aside>}
     <div className="actions"><button className="btn brass" data-autofocus onClick={actions.complContinue}>Continue</button></div>
   </>;
 }
@@ -98,7 +98,7 @@ export function ReportCard({id, onClose, inline}){
 }
 
 /* =====================================================================
-   SPOTLIGHT (v7): marks, ranks and new Field Reports, one at a time.
+   SPOTLIGHT (v7): marks, ranks and new landmark cases, one at a time.
    It waits for any dialog to close, stays for several seconds with a
    visible countdown, pauses while you point at or focus it, and offers
    a way to go and look. Anything you miss stays marked as new on your

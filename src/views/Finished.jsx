@@ -35,7 +35,7 @@ function Debrief({S}){
           {(w.marks||[]).map(id=>{ const m = ALL_MARKS.find(x=>x.id===id); return m ? <li key={id}><Icon name={m.icon}/>Mark: <b>{m.name}</b></li> : null; })}
         </ul>}
         {((w.marks||[]).length>0 || (w.ranks||[]).length>0) && <button className="linkbtn" onClick={()=>actions.view('character')}>See them on your character sheet</button>}</div>
-      <div><h3 className="h4">Field Reports met</h3>{w.reports.length ? <ul className="mini">{w.reports.map(id=><li key={id}><button className="linkbtn" onClick={()=>actions.seeReport(id)}><Icon name="book"/>{reportById(id).title}</button></li>)}</ul> : <p className="muted small">None new on this walk.</p>}</div>
+      <div><h3 className="h4">Landmark cases met</h3>{w.reports.length ? <ul className="mini">{w.reports.map(id=><li key={id}><button className="linkbtn" onClick={()=>actions.seeReport(id)}><Icon name="book"/>{reportById(id).title}</button></li>)}</ul> : <p className="muted small">None new on this walk.</p>}</div>
     </div></section>;
 }
 

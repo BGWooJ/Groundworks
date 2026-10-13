@@ -10,7 +10,7 @@
 export const ROLES = [
   {id:'practitioner', name:'Practitioner', level:'People who do the work',
    d:'You know where the work really hurts, and what would change for the person at the desk.',
-   lens:'floor', lensName:'From the floor', perk:'Both field notes open on every step, and you see what changes for the person doing the work.'},
+   lens:'floor', lensName:'From the floor', perk:'Both notes from the team open on every step, and you see what changes for the person doing the work.'},
   {id:'steward', name:'Steward', level:'Team leads and managers',
    d:'You own a team’s results. You need the first move, who to involve and how to measure it.',
    lens:'team', lensName:'Team view', perk:'Every verdict comes with the first move, who to involve and the measure, up front.'},
@@ -41,12 +41,12 @@ export function rankOf(xp){
 
 /* Experience is earned for reading well and judging well, not for clicking. */
 export const XP = {
-  match:10, near:5,          // per scored answer on a Meridian step, after comparing with the field
+  match:10, near:5,          // per scored answer on a Meridian step, after comparing with the Guide
   dig:5,                     // hearing from the floor
   strong:25, workable:10,    // complication answers
   walk:50,                   // finishing a Meridian walk
   ownStep:15, ownMap:50,     // reading a step of your own process, finishing your own map
-  report:10,                 // meeting a Field Report for the first time
+  report:10,                 // meeting a landmark case for the first time
   export:20,                 // taking a map further, once per map
 };
 
@@ -75,7 +75,7 @@ export function standingLine(delta){
   return 'A steady walk. Nothing you did under pressure will come back to bite you.';
 }
 
-/* Mastery: how often your reads match the field, by question and by capability family. */
+/* Mastery: how often your reads match the Guide, by question and by capability family. */
 export const SKILLS = [
   {k:'shape', name:'Reading the work'}, {k:'input', name:'Reading the inputs'}, {k:'rep', name:'Sizing the volume'},
   {k:'stakes', name:'Weighing the stakes'}, {k:'band', name:'Calling LLM fit'}, {k:'cap', name:'Matching capability'}, {k:'auto', name:'Setting autonomy'},

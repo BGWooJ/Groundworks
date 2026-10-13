@@ -23,9 +23,9 @@ export default function Topbar(){
     <div className="tb-r">
       {showProg ? <span className="prog"><span className="segs">{S.steps.map((st,i)=><i key={st.id} className={stepDone(S, st)?'done':(S.view==='step' && i===S.cur?'cur':'')}/>)}</span>
         {n===S.steps.length ? `All ${n} steps read` : `${n} of ${S.steps.length} steps read`}</span> : null}
-      {S.view==='step' && <button className="tbtn" onClick={actions.guideToggle} aria-pressed={S.gui.open}><Icon name="compass"/>Field guide</button>}
+      {S.view==='step' && <button className="tbtn" onClick={actions.guideToggle} aria-pressed={S.gui.open}><Icon name="compass"/>Hint</button>}
       <button className="tbtn" onClick={()=>actions.view('maps')} aria-label={`My maps${open ? `, ${open} in progress` : ''}`}><Icon name="map"/><span className="hide-s">My maps</span>{open>0 && <span className="tcount">{open}</span>}</button>
-      <button className="tbtn" onClick={()=>actions.view('library')} aria-label={`Field Library${u.reports.length ? `, ${u.reports.length} new` : ''}`}><Icon name="book"/><span className="hide-s">Library</span>{u.reports.length>0 && <span className="tcount new">{u.reports.length}</span>}</button>
+      <button className="tbtn" onClick={()=>actions.view('library')} aria-label={`Case library${u.reports.length ? `, ${u.reports.length} new` : ''}`}><Icon name="book"/><span className="hide-s">Library</span>{u.reports.length>0 && <span className="tcount new">{u.reports.length}</span>}</button>
       <button className="rankpill" onClick={()=>actions.view('character')} aria-label={`Your character: ${r.name}, ${P.xp} experience${fresh ? `, ${fresh} new` : ''}`}>
         <span className="rp-badge"><Icon name={role ? 'user' : 'compass'}/>{fresh>0 && <span className="tcount new" aria-hidden="true">{fresh}</span>}</span>
         <span className="rp-text"><b>{r.name}</b><span className="rp-bar"><i style={{width:Math.round(r.pct*100)+'%'}}/></span></span>

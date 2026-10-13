@@ -43,7 +43,7 @@ function loadSettings(){ try{ return Object.assign({sound:false, volume:0.6}, JS
 export const ALL_MARKS = MARKS.concat([
   {id:'newground', icon:'route',   name:'New ground',        d:'Walk a process in one of the five newer parts of the Bank.'},
   {id:'charter',   icon:'notes',   name:'A clear charter',   d:'Start your own map with the challenge and what success looks like.'},
-  {id:'library5',  icon:'book',    name:'Well read',         d:'Collect five Field Reports.'},
+  {id:'library5',  icon:'book',    name:'Well read',         d:'Collect five landmark cases.'},
   {id:'standing',  icon:'shieldup',name:'Standing tall',     d:'Finish a walk with credibility, rigour and trust all higher than you started.'},
 ]);
 const NEW_FN_IDS = NEW_FUNCTIONS.map(f=>f.id);
@@ -65,6 +65,12 @@ export function fresh(guide){
 }
 
 let state = {S:fresh(), J:loadJournal(), settings:loadSettings(), toasts:[], popups:[], spot:[], sfx:[]};
+/* v8: a new player meets the introduction first. Anyone with progress from before v8 goes straight to
+   the home screen, where "How it works" opens it. */
+export function isNewPlayer(J){
+  return !J.profile.role && !J.profile.xp && !J.walks.length && !Object.keys(J.maps).length && !Object.keys(J.progress).length;
+}
+if(!state.J.profile.seen.intro && isNewPlayer(state.J)) state.S.view = 'intro';
 setSound(state.settings.sound, state.settings.volume);
 const listeners = new Set();
 let uid = 0;
@@ -107,7 +113,7 @@ export function navigate(fn){
   run();
 }
 
-/* ---------- activity clock for the field guide ---------- */
+/* ---------- activity clock for hints ---------- */
 export const activity = {last:Date.now()};
 export function touch(){ activity.last = Date.now(); }
 
@@ -146,7 +152,7 @@ function collect(d, id){
   if(!id || d.J.profile.codex[id]) return;
   d.J.profile.codex[id] = Date.now();
   if(!d.S.walk.reports.includes(id)) d.S.walk.reports.push(id);
-  gain(d, XP.report, 'Field report');
+  gain(d, XP.report, 'Landmark case');
   // the case is already on screen where it was met (the reveal or the complication), so no spotlight:
   // it is counted as new on the Library button until the player opens the library
   if(!d.J.profile.unseen.reports.includes(id)) d.J.profile.unseen.reports.push(id);
@@ -220,6 +226,14 @@ export const actions = {
     });
   },
   askRole(next){ navigate(d=>{ d.S.next = next || null; d.S.prevView = d.S.view; d.S.view = 'role'; }); },
+  /* v8: the introduction, and where it leads. */
+  introOpen(){ navigate(d=>{ d.S.prevView = d.S.view; d.S.view = 'intro'; }); },
+  introDone(next){
+    update(d=>{ d.J.profile.seen.intro = true; });
+    if(next==='guided') actions.startGuided();
+    else if(next==='own') actions.startOwn();
+    else actions.home();
+  },
   clearAsk(){ update(d=>{ d.S.confirmClear = true; }); },
   clearNo(){ update(d=>{ d.S.confirmClear = false; }); },
   clearYes(){
@@ -367,9 +381,9 @@ export const actions = {
       if(r){ a.report = r.id; collect(d, r.id); }
     });
   },
-  dig(){ update(d=>{ const st = d.S.steps[d.S.cur]; if(d.S.dug[st.id]) return; d.S.dug[st.id] = true; gain(d, XP.dig, 'Heard from the floor'); sfx(d, 'page'); }); },
+  dig(){ update(d=>{ const st = d.S.steps[d.S.cur]; if(d.S.dug[st.id]) return; d.S.dug[st.id] = true; gain(d, XP.dig, 'Heard from the team'); sfx(d, 'page'); }); },
   seeReport(id){ update(d=>{ collect(d, id); d.S.modal = {type:'report', id}; sfx(d, 'page'); }); },
-  /* Reading from the library shows a case without collecting it: cases are collected in the field. */
+  /* Reading from the library shows a case without collecting it: cases are collected on walks. */
   peekReport(id){ update(d=>{ d.S.modal = {type:'report', id}; sfx(d, 'page'); }); },
   nextStep(){
     const go = ()=>navigate(d=>{
@@ -408,7 +422,7 @@ export const actions = {
   complContinue(){ update(d=>{ d.S.modal = null; }); actions.nextStep(); },
   closeModal(){ update(d=>{ d.S.modal = null; }); },
 
-  /* ---------- field guide ---------- */
+  /* ---------- hints ---------- */
   guideToggle(){ update(d=>{ d.S.gui.open = !d.S.gui.open; if(d.S.gui.open) d.S.gui.tier = 1; sfx(d, 'tap'); }); },
   guideClose(){ update(d=>{ d.S.gui.open = false; }); },
   guideMore(){ update(d=>{ d.S.gui.tier = 2; sfx(d, 'xp'); }); },
@@ -493,7 +507,7 @@ function finishGuided(d){
   gain(d, XP.walk, 'Walk complete');
   P.walks++;
   const agree = steps.filter(st=>S.ans[st.id].band===expertBand(st)).length;
-  d.J.walks.unshift({proc:exp.name, summary:`Matched the field’s LLM call on ${agree} of ${steps.length} steps.`, xp:w.xp, when:Date.now(),
+  d.J.walks.unshift({proc:exp.name, summary:`Matched the Guide’s LLM call on ${agree} of ${steps.length} steps.`, xp:w.xp, when:Date.now(),
     procId:S.procId, ans:S.ans, dug:S.dug, walk:w, compl:{fired:S.compl.fired, answers:S.compl.answers, flags:S.compl.flags || []}});
   delete d.J.progress[S.procId];
   d.J.walks = d.J.walks.slice(0,8);

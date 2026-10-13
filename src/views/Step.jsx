@@ -9,7 +9,7 @@ import {reportFor, reportById} from '../content/fieldReports.js';
 import {QUESTIONS, SCORED, asks, askedQuestions, answered, markOf, scoreRead, stepEval, stepDone, nextOpenIndex, pointerFor, optName, capName, fill,
   whoName, teamOf, splitVolume, levelName, guardrailsFor, guardrailName, familyOfCap, LV} from '../game/flow.js';
 import {ROLES} from '../game/rpg.js';
-import {Icon, Art, Emph, Emblem, Chip} from '../components/ui.jsx';
+import {Icon, Art, Emph, Emblem, Chip, Term} from '../components/ui.jsx';
 import {ReportCard} from '../components/Feedback.jsx';
 
 /* One arrival line per step, chosen once. */
@@ -35,7 +35,7 @@ function Ministrip({S}){
   })}</nav>;
 }
 
-/* ---------- the field guide ---------- */
+/* ---------- hints ---------- */
 function guideInfo(S, q, a, st){
   const guided = S.mode==='guided';
   let ask = '', where = '', target = '';
@@ -44,20 +44,20 @@ function guideInfo(S, q, a, st){
     if(guided){ where = HINTS[q.k][q.field(st)]; target = HINTS.dimWhere[q.k]; }
   } else if(q.k==='band'){
     ask = 'Ask what the step produces. If it is language read, written or answered, an LLM may fit. If it follows fixed rules or moves data, it does not.';
-    if(guided){ const b = BANDS.find(x=>x.id===expertBand(st)); where = `The field’s answer is in the description of “${b.name.toLowerCase()}”: ${b.d}`; target = 'notes'; }
+    if(guided){ const b = BANDS.find(x=>x.id===expertBand(st)); where = `The Guide’s answer is in the description of “${b.name.toLowerCase()}”: ${b.d}`; target = 'notes'; }
   } else if(q.k==='cap'){
     ask = fill(HINTS.capAsk, {shape:optName(SHAPES,a.shape).toLowerCase()});
-    if(guided) where = `The field picks from ${bandName(expertBand(st)).toLowerCase()}: look closely at “${capName(st.expertPick)}”.`;
+    if(guided) where = `The Guide picks from ${bandName(expertBand(st)).toLowerCase()}: look closely at “${capName(st.expertPick)}”.`;
   } else if(q.k==='auto'){
     ask = fill(HINTS.autoAsk, {stakes:levelName(a.stakes).toLowerCase()||'unknown'});
     if(guided){ where = HINTS.auto[st.autoBest]; target = 'pain'; }
-  } else ask = 'There is no field answer here. This is about your organisation, and it decides which approved tool fits.';
+  } else ask = 'The Guide has no answer here. This is about your organisation, and it decides which approved tool fits.';
   return {ask, where, target};
 }
 function GuideCard({S, q, a, st}){
   const g = guideInfo(S, q, a, st);
-  return <aside className="guide-card" aria-label="Field guide">
-    <header><span><Icon name="compass"/>Field guide</span><button className="iconbtn" onClick={actions.guideClose} aria-label="Close the field guide"><Icon name="close"/></button></header>
+  return <aside className="guide-card" aria-label="Hint">
+    <header><span><Icon name="compass"/>Hint</span><button className="iconbtn" onClick={actions.guideClose} aria-label="Close the hint"><Icon name="close"/></button></header>
     <p className="g-ask">{g.ask}</p>
     {g.where && (S.gui.tier>=2 ? <p className="g-where"><Icon name="spark"/>{g.where}</p>
       : <button className="g-btn" onClick={actions.guideMore}><Icon name="spark"/>Point me to the evidence</button>)}
@@ -79,7 +79,7 @@ function SituationGuided({S, st, i, glow}){
     <div className={'sblock' + g('systems')}><h2 className="h4">How it runs today</h2>
       <div className="pills">{st.systems.split(',').map((s,k)=>{ s = s.trim(); return <span key={k} className="pill">{s.charAt(0).toUpperCase()+s.slice(1)}</span>; })}</div>
       <p className={'notes' + g('notes')}><Emph text={st.notes}/></p></div>
-    <figure className={'pain' + g('pain')}><figcaption>The measured pain</figcaption><blockquote><Emph text={st.pain}/></blockquote></figure>
+    <figure className={'pain' + g('pain')}><figcaption>What it costs today</figcaption><blockquote><Emph text={st.pain}/></blockquote></figure>
   </>;
 }
 function SituationOwn({S, st, i, a}){
@@ -143,6 +143,7 @@ function Question({S, q, a, st}){
   const def = shownO ? ((advice && advice.why[shown]) || shownO.d) : 'Point at an option to see what it means.';
   return <div className="question" data-q={q.k}>
     <h3>{q.q}</h3>
+    {q.k==='band' && <p className="qterm"><Term id="llm"/></p>}
     {advice && advice.notes.length>0 && <ul className="qnotes">{advice.notes.map((n,i)=><li key={i}><Icon name="near"/>{n}</li>)}</ul>}
     <div className={`opts ${many?'many':''} ${isAuto?'trio':''}`} role="radiogroup" aria-label={q.label} onMouseLeave={()=>setHover(null)}>
       {opts.map(o=>{ const t = advice && advice.tag[o.id];
@@ -213,7 +214,7 @@ function FieldReport({id, fresh}){
   const r = reportById(id); if(!r) return null;
   return <section className={'fr ' + (open?'open':'')}>
     <button className="fr-head" onClick={()=>{ setOpen(!open); actions.sound('page'); }} aria-expanded={open}>
-      <span className="fr-k"><Icon name="book"/>From the wider world{fresh && <span className="newtag">New</span>}</span>
+      <span className="fr-k"><Icon name="book"/>A landmark case{fresh && <span className="newtag">New</span>}</span>
       <b>{r.title}</b><span className="muted small">{r.org}, {r.year}</span></button>
     {open && <ReportCard id={id} inline/>}
   </section>;
@@ -232,13 +233,13 @@ function RevealGuided({S, st, a}){
   return <div className="reveal-seq">
     <div className={`agree t-${R.tier}`}><span className="ag">{Math.round(R.score*10)/10}<small> of {R.of}</small></span><p>{line('rv:'+st.id, REACT.profile[R.tier])}</p></div>
     <div className={'fieldread ' + (bandOk?'ok':'differs')}>
-      <h3>{bandOk ? 'The field agrees on the LLM call' : `The field reads it as: ${bandName(expertBand(st))}`}</h3>
+      <h3>{bandOk ? 'The Guide agrees on the LLM call' : `The Guide reads it as: ${bandName(expertBand(st))}`}</h3>
       <p>{st.expertWhy}</p><p className="small">{st.autoNote}</p></div>
     <div className={`verdict vt-${v.tone}`} tabIndex={-1}><Emblem verdict={e.verdict} size={52}/><div><span className="vl">The verdict for this step</span><h3>{v.name}</h3><p>{v.advice}</p></div></div>
     <Lenses S={S} st={st} a={a} e={e}/>
     <div className="fnotes">{(S.dug[st.id] ? [0,1] : [0]).map(k=>{ const d = st.discoveries[k];
       return <article key={k} className={'fnote ' + (k?'fresh':'')}><span className="fni"><Icon name="notes"/></span><div><h4>{d.title}</h4><p>{d.text}</p><p className="eff">{d.effect}</p></div></article>; })}
-      {!S.dug[st.id] && <button className="fnote sealed" onClick={actions.dig}><Icon name="interview"/><span><b>Hear more from the floor</b><span>One more field note from {teamOf(st.who)}. +5 XP</span></span></button>}</div>
+      {!S.dug[st.id] && <button className="fnote sealed" onClick={actions.dig}><Icon name="interview"/><span><b>Hear more from the team</b><span>One more note from {teamOf(st.who)}. +5 XP</span></span></button>}</div>
     {a.report && <FieldReport id={a.report} fresh={walkReports.includes(a.report)}/>}
     <Pointer S={S} st={st}/>
     <div className="actions"><NextButton S={S}/></div>
@@ -254,7 +255,7 @@ function ResultOwn({S, st, a}){
       <p className="small muted">{levelName(e.value)} value, {levelName(e.feas).toLowerCase()} feasibility{e.nums?`, from about ${Math.round(e.nums.total)} hours a month`:''}.</p></div></div>
     <Lenses S={S} st={st} a={a} e={e}/>
     {r && <section className="fr"><button className="fr-head" onClick={()=>actions.seeReport(r.id)}>
-      <span className="fr-k"><Icon name="book"/>A real case like this{!codex[r.id] && <span className="newtag">New</span>}</span><b>{r.title}</b><span className="muted small">{r.org}, {r.year}</span></button></section>}
+      <span className="fr-k"><Icon name="book"/>A landmark case like this{!codex[r.id] && <span className="newtag">New</span>}</span><b>{r.title}</b><span className="muted small">{r.org}, {r.year}</span></button></section>}
     <Pointer S={S} st={st}/>
     <div className="actions"><NextButton S={S}/></div>
   </>;
@@ -276,14 +277,14 @@ function ReadPanel({S, st, a}){
       const carried = a._carried && a._carried[q.k];
       const si = SCORED.indexOf(q);
       const inner = <><span className="rk">{q.label}</span><span className="rv">
-        {mk && <span className={'rm m-'+mk} aria-label={mk==='match'?'Matches the field':(mk==='near'?'Close to the field':'Differs from the field')}><Icon name={mk==='match'?'check':(mk==='near'?'near':'x')}/></span>}
+        {mk && <span className={'rm m-'+mk} aria-label={mk==='match'?'Matches the Guide':(mk==='near'?'Close to the Guide':'Differs from the Guide')}><Icon name={mk==='match'?'check':(mk==='near'?'near':'x')}/></span>}
         <span>{name}{carried && <span className="muted"> (from the last step)</span>}</span>
-        {fieldTxt && <span className="rf">Field: {fieldTxt}</span>}</span></>;
+        {fieldTxt && <span className="rf">Guide: {fieldTxt}</span>}</span></>;
       return revealed ? <div key={q.k} className={'arow ' + (mk?'m-'+mk:'')} style={{'--si':si<0?0:si}}>{inner}</div>
         : <button key={q.k} className="arow" onClick={()=>actions.reopen(q.k)} aria-label={`Change: ${q.label}, ${name}`}>{inner}<span className="rc"><Icon name="chev"/></span></button>;
     })}</div>
     {!done && <p className="muted small qcount"><span className="qbar"><i style={{width:Math.round(count/asked.length*100)+'%'}}/></span>{count} of {asked.length} answered</p>}
-    {done && guided && !revealed && <div className="actions"><button className="btn brass big" data-focus="reveal" onClick={actions.reveal}><Icon name="spark"/>Compare with the field</button></div>}
+    {done && guided && !revealed && <div className="actions"><button className="btn brass big" data-focus="reveal" onClick={actions.reveal}><Icon name="spark"/>Compare with the Guide</button></div>}
     {done && (guided ? (revealed && <RevealGuided S={S} st={st} a={a}/>) : <ResultOwn S={S} st={st} a={a}/>)}
   </>;
 }

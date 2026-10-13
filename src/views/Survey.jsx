@@ -6,7 +6,7 @@ import {FUNCTIONS, MAP_GROUPS} from '../content/meridian.js';
 import {getExpedition} from '../content/expeditions.js';
 import {findProcessMeta, heatOf} from '../game/flow.js';
 import {NEW_FUNCTIONS} from '../content/districts.js';
-import {Icon, Art, Emph, HeatBar} from '../components/ui.jsx';
+import {Icon, Art, Emph, HeatBar, Term} from '../components/ui.jsx';
 
 const NEW_IDS = NEW_FUNCTIONS.map(f=>f.id);
 
@@ -60,7 +60,7 @@ function Drawer({fn, full, S}){
             </div>
           </div>
           <aside className="sigcol"><h3 className="h4">Signals</h3><ul className="signals">{fn.signals.map((sg,i)=><li key={i} className={'sig-'+sg.s}><span className="sig"/><span><Emph text={sg.t}/></span></li>)}</ul>
-            <p className="muted small">Signals are the evidence: volume, repetition and pain someone has measured. Strong ones are marked in brass.</p></aside>
+            <p className="muted small">Signals are the evidence: volume, repetition and time someone has measured. Strong ones are marked in brass.</p></aside>
         </div>
       </m.div>
     </section>
@@ -72,8 +72,8 @@ export function Terrain(){
   const full = S.shortlist.length>=3;
   const fn = S.viewFn ? FUNCTIONS.find(f=>f.id===S.viewFn) : null;
   return <>
-    <header className="scene"><p className="kicker">Survey</p><h1>Where does the pain live?</h1>
-      <p className="lede">Open each part of Meridian Reserve Bank and read its signals. Shortlist up to three processes worth a closer look.</p></header>
+    <header className="scene"><p className="kicker">Survey</p><h1>Where could AI help most?</h1>
+      <p className="lede">Look for the work that takes the most time. Some of it will turn out to need no AI at all. Open each part of Meridian Reserve Bank, read its signals, and shortlist up to three processes worth a closer look.</p></header>
     <div className="tray"><span className="trayl"><Icon name="flag"/>Your shortlist</span>
       <ul className="slots">{[0,1,2].map(i=>{
         const pid = S.shortlist[i];
@@ -109,7 +109,7 @@ export function Reveal(){
   const top = all.slice(0,8).map(p=>p.id), hits = S.shortlist.filter(id=>top.includes(id)).length;
   const lineTxt = hits===S.shortlist.length ? 'Every pick is among the strongest hotspots in the Bank.' : (hits ? `${hits} of your ${S.shortlist.length} picks are among the eight strongest hotspots.` : 'The strongest hotspots were elsewhere. Your picks are still worth walking.');
   return <>
-    <header className="scene"><p className="kicker">Survey</p><h1>The full survey</h1><p className="lede">Every process, ranked by how strong a hotspot it is: volume, repetition, a pain you can measure, and data already captured.</p></header>
+    <header className="scene"><p className="kicker">Survey</p><h1>The full survey</h1><p className="lede">Every process, ranked by how strong a hotspot it is: volume, repetition, a cost you can measure, and data already captured.</p></header>
     <p className="callout"><Icon name="spark"/>{lineTxt}</p>
     <ol className="ladder">{all.map((p,i)=>{ const mine = S.shortlist.includes(p.id);
       return <li key={p.id} className={mine?'mine':''} style={{'--i':Math.min(i,20)}}><HeatBar r={p.rating}/>
@@ -122,7 +122,7 @@ export function Reveal(){
 export function Pick(){
   const S = useGame(s=>s.S);
   return <>
-    <header className="scene"><p className="kicker">Survey</p><h1>Pick one to walk</h1><p className="lede">One process, every step. You will read each step, then see how the field reads it.</p></header>
+    <header className="scene"><p className="kicker">Survey</p><h1>Pick one to walk</h1><p className="lede">One process, every step. You will read each step, then see how the Guide reads it.{' '}<Term id="guide"/></p></header>
     <div className="routes">{S.shortlist.map(pid=>{ const e = getExpedition(pid);
       return <button key={pid} className="routecard" onClick={()=>actions.pickProc(pid)}>
         <span className="rill"><Art kind="dept" id={e.fnId}/></span>

@@ -1,14 +1,14 @@
 /* =====================================================================
    STORY: the light game layer.
    Sponsor, guidance levels, complications (unscored judgment calls with
-   feedback), reaction lines, field guide hints, and marks.
+   feedback), reaction lines, hints, and marks.
    ===================================================================== */
 const SPONSOR = {name:'Marion Okafor', role:'First Vice President'};
 
 const GUIDANCE = [
   {id:'ropes', name:'Walk me through it', d:'A pointer opens at every decision.'},
   {id:'stall', name:'Nudge me if I stall', d:'Help opens if you pause, or after a miss.'},
-  {id:'ask',   name:'Only when I ask', d:'The field guide stays closed until you open it.'},
+  {id:'ask',   name:'Only when I ask', d:'Hints stay closed until you open them.'},
 ];
 
 /* Standing effects: what your stats change about the game. */
@@ -158,14 +158,14 @@ const REACT = {
     'You ask the {who} to show you, not tell you.',
   ],
   profile:{
-    great:['Your read matches the field almost exactly.','That is how the people who do this work would describe it.','A clean read. The capability choice will be easier for it.','Sharp. You saw past the systems to the work itself.'],
-    good:['A solid read, with a dimension worth a second look.','Mostly there. The differences are worth understanding.','Close. Where you differ, the field notes say why.'],
+    great:['Your read matches the Guide almost exactly.','That is how the people who do this work would describe it.','A clean read. The capability choice will be easier for it.','Sharp. You saw past the systems to the work itself.'],
+    good:['A solid read, with a dimension worth a second look.','Mostly there. The differences are worth understanding.','Close. Where you differ, the notes from the team say why.'],
     mixed:['Partly there. The work is easy to mistake for the systems around it.','A mixed read. Look at what the person produces at the end of the step.','Some of this lands. Unpick the rest before you pick a tool.'],
-    off:['The field sees this step differently. Worth knowing why before you match a capability.','A long way from the field read. Re-read the pain: it usually points at the shape.','This one got away from you. It happens on unfamiliar ground.'],
+    off:['The Guide sees this step differently. Worth knowing why before you match a capability.','A long way from the Guide’s read. Re-read what it costs today: it usually points at the kind of work.','This one got away from you. It happens on unfamiliar ground.'],
   },
   match:{
-    best:['That is the capability the field reaches for.','Right family, right capability.','A strong fit. The step and the capability agree.','Exactly what this work needs.'],
-    ok:['It would work, but it is not the first move.','Workable. There is a sharper fit for this step.','Not wrong, and not the field\u2019s pick.'],
+    best:['That is the capability the Guide reaches for.','Right family, right capability.','A strong fit. The step and the capability agree.','Exactly what this work needs.'],
+    ok:['It would work, but it is not the first move.','Workable. There is a sharper fit for this step.','Not wrong, and not the Guide\u2019s pick.'],
     poor:['That capability does not fit the shape of this work.','A mismatch. The tool and the step want different things.','Not this one. The work is asking for something else.'],
   },
   auto:{
@@ -217,7 +217,7 @@ const HINTS = {
     high:'An error reaches someone important, is regulated, or is hard to undo.',
   },
   capAsk:'You read this step as \u201c{shape}\u201d. Start in the family built for that kind of work, and ask whether a rule would do it first.',
-  capFam:'The field looks first in \u201c{fam}\u201d.',
+  capFam:'The Guide looks first in \u201c{fam}\u201d.',
   capRule:'Part of this can be written down as a rule, or fixed upstream.',
   autoAsk:'You rated the stakes {stakes}. Who should own a wrong answer here?',
   auto:{
@@ -225,15 +225,15 @@ const HINTS = {
     review:'The routine can run on its own; the exceptions need a person.',
     auto:'Errors here are cheap and reversible.',
   },
-  terrainAsk:'A hotspot has four ingredients: volume, repetition, a pain you can measure, and inputs that are already captured.',
+  terrainAsk:'A hotspot has four ingredients: volume, repetition, a cost you can measure, and inputs that are already captured.',
   terrainWhere:'Look for parts of the Bank with two strong signals. The glow on the map marks measured evidence, not noise.',
   realityAsk:'Rate the ground the idea has to cross, not how good the idea is.',
-  realityWhere:'Your field notes on each candidate are clues. \u201cFix first\u201d and \u201cData: ready\u201d both say something about feasibility.',
-  realityThin:'You did not interview on this step. Read its pain again: it tells you the size of the prize.',
+  realityWhere:'Your notes from the team on each candidate are clues. \u201cFix first\u201d and \u201cData: ready\u201d both say something about feasibility.',
+  realityThin:'You did not interview on this step. Read what it costs today again: it tells you the size of the prize.',
   canvasAsk:'Ask how this fails, and who is hurt when it does.',
   canvasWhere:'For {cap} at \u201c{auto}\u201d, start with {g}.',
   missMatch:'Last step the capability missed. Read the shape you chose, then look in that family first.',
-  missProfile:'Last step\u2019s read was some way off. Re-read the pain before you choose: it usually points at the shape.',
+  missProfile:'Last step\u2019s read was some way off. Re-read what it costs today before you choose: it usually points at the kind of work.',
 };
 
 /* Complications are drawn from these slots: one part way through a walk,
@@ -246,10 +246,10 @@ const MARKS = [
   {id:'first',     icon:'flag',      name:'First map',              d:'Finish walking a process.'},
   {id:'flagships', icon:'map',       name:'The four flagships',     d:'Walk all four flagship processes.'},
   {id:'offpath',   icon:'route',     name:'Off the beaten path',    d:'Walk a process beyond the flagships.'},
-  {id:'saidno',    icon:'x',         name:'Knowing when not to',    d:'Call a step \u201cnot an LLM job\u201d when the field agrees.'},
-  {id:'inagree',   icon:'check',     name:'In step with the field', d:'Match the field\u2019s LLM call on every step of a process.'},
-  {id:'steady',    icon:'review',    name:'Measured autonomy',      d:'Match the field\u2019s autonomy on every step of a process.'},
-  {id:'digger',    icon:'interview', name:'Every voice heard',      d:'Hear from the floor on every step of a process.'},
+  {id:'saidno',    icon:'x',         name:'Knowing when not to',    d:'Call a step \u201cnot an LLM job\u201d when the Guide agrees.'},
+  {id:'inagree',   icon:'check',     name:'In step with the Guide', d:'Match the Guide\u2019s LLM call on every step of a process.'},
+  {id:'steady',    icon:'review',    name:'Measured autonomy',      d:'Match the Guide\u2019s autonomy on every step of a process.'},
+  {id:'digger',    icon:'interview', name:'Every voice heard',      d:'Hear more from the team on every step of a process.'},
   {id:'coolhead',  icon:'trust',     name:'Cool head',              d:'Give the strong answer to both complications in a walk.'},
   {id:'ownmap',    icon:'doc',       name:'Your own ground',        d:'Map a process of your own.'},
   {id:'further',   icon:'spark',     name:'Taken further',          d:'Export a map or copy it for LPP.'},

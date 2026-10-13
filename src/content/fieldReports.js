@@ -3,7 +3,7 @@
    failing outside Meridian. Each one is tied to the capabilities,
    verdicts and guardrails it illustrates, so the game can surface the
    right case at the right moment, and it is collected into the player's
-   Field Library when first met.
+   case library when first met.
 
    Every figure here was checked against the source named on the card in
    October 2026. Where sources disagree, the card uses the most

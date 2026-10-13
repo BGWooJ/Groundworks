@@ -5,7 +5,7 @@ import {DESTINATIONS, destOf, stepsLabel} from '../engine/tools.js';
 import {VERDICTS, numbersOf} from '../engine/engine.js';
 import {CHARTER} from '../content/campaign.js';
 import {stepDone, stepEval, nextOpenIndex, readSteps, headingFor, splitVolume, startedReading, round, findProcessMeta, optName} from '../game/flow.js';
-import {Icon, Art, Chip, Emblem, Emph} from '../components/ui.jsx';
+import {Icon, Art, Chip, Emblem, Emph, Term} from '../components/ui.jsx';
 
 function VolLine({S, st}){
   if(S.mode==='guided'){ const v = splitVolume(st.volume); return <div className="vol">{v.big && <b>{v.big}</b>}<span>{v.big?v.rest:st.volume}</span></div>; }
@@ -24,7 +24,7 @@ export function StepCard({S, st, i, final}){
     <h3 className="ct">{st.name}</h3>
     <VolLine S={S} st={st}/>
     {done && <Chip band={e.a.band}/>}
-    {done && final && <p className={`cverdict v-${VERDICTS[e.verdict].tone}`}><Emblem verdict={e.verdict} size={22}/>{S.mode==='guided' && <span className="muted">Field: </span>}{VERDICTS[e.verdict].name}</p>}
+    {done && final && <p className={`cverdict v-${VERDICTS[e.verdict].tone}`}><Emblem verdict={e.verdict} size={22}/>{S.mode==='guided' && <span className="muted">Guide: </span>}{VERDICTS[e.verdict].name}</p>}
     {done && e.tool && <span className="points"><Icon name="arrow"/>Points to <b>{destOf(e.tool.winner).name}</b></span>}
     {isCur && <>{S.mode==='guided' && <p className="cpain"><Emph text={st.pain}/></p>}<span className="cgo">{startedReading(S, st) ? 'Continue reading' : 'Read this step'}</span></>}
     {!done && !isCur && <span className="muted cnr">Not read yet</span>}
@@ -70,7 +70,7 @@ export function Heading({S, final}){
     </div></section>;
 }
 
-/* The charter for this walk: the user's own four answers, or the field's case for a Meridian process. */
+/* The charter for this walk: the user's own four answers, or the Guide's case for a Meridian process. */
 function Charter({S}){
   if(S.mode==='own'){
     const c = S.own.charter || {};
@@ -99,7 +99,7 @@ export default function MapView(){
   const org = S.mode==='guided' ? exp.fn : S.own.org;
   return <>
     <header className="scene withill"><div className="sh"><p className="kicker">{org || 'Your process'}</p><h1>Where would an LLM earn its keep?</h1>
-      <p className="lede">{n} steps, in the order the work happens. Read each one, starting with the highlighted step.</p></div>
+      <p className="lede">{n} steps, in the order the work happens. Read each one, starting with the highlighted step.{' '}<Term id="llm"/></p></div>
       {exp && <div className="hill"><Art kind="dept" id={exp.fnId}/></div>}</header>
     {S.resumed && S.mode==='guided' && <p className="callout back"><Icon name="flag"/><span>Welcome back. Your answers are as you left them.</span>
       <button className="linkbtn" onClick={actions.restartWalk}>Start this walk again</button></p>}

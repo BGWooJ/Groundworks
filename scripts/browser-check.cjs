@@ -1,4 +1,4 @@
-// Browser check for the v7 fixes. Needs Playwright (npm i -g playwright) and a running preview:
+// Browser check for the v7 fixes (updated for the v8 start: the introduction and the start cards). Needs Playwright (npm i -g playwright) and a running preview:
 //   npm run build && npx vite preview --port 4173   then   node scripts/browser-check.cjs
 const {chromium} = require(process.env.PLAYWRIGHT_PATH || 'playwright');
 const BASE = process.env.GROUNDWORK_URL || 'http://localhost:4173/';
@@ -14,7 +14,8 @@ async function walkStep(p){ await p.waitForSelector('.question .token'); await a
   await p.goto(BASE); await p.evaluate(()=>localStorage.clear()); await p.reload(); await wait(500);
 
   /* ---------- 1. Shortlist choices and next step, from a cold start ---------- */
-  await p.click('text=Walk a Meridian process'); await p.click('.rolecard >> nth=2'); await p.waitForSelector('.station'); await wait(900);
+  await p.click('text=Skip the introduction'); await wait(300);
+  await p.click('.startcard >> nth=0'); await p.click('.rolecard >> nth=2'); await p.waitForSelector('.station'); await wait(900);
   await p.click('.station >> text=Economists'); await wait(900);
   let g = await p.evaluate(()=>{ const pk=[...document.querySelectorAll('.pick')].map(x=>x.getBoundingClientRect()); return {vh:innerHeight, first:Math.round(pk[0].top), last:Math.round(pk[pk.length-1].bottom), n:pk.length}; });
   ok('shortlist: all Economists choices are on screen after one click (desktop)', g.first>60 && g.last<g.vh, JSON.stringify(g));
@@ -73,7 +74,7 @@ async function walkStep(p){ await p.waitForSelector('.question .token'); await a
   ok('reopen: a finished walk opens again on its finished map', await p.evaluate(()=>!!document.querySelector('.v-finished .plan') && document.body.textContent.includes('A finished walk, reopened')));
 
   /* ---------- 3. Your own map: draft, hints, coherence, skipped questions ---------- */
-  await p.click('.brand'); await p.click('text=Map your own process'); await p.waitForSelector('#proc');
+  await p.click('.brand'); await p.click('.startcard >> nth=1'); await p.waitForSelector('#proc');
   await p.fill('#proc', 'Logging customer meetings'); await p.reload(); await wait(500);
   await p.click('.tbtn:has-text("My maps")'); await wait(400);
   ok('draft: a half-typed setup survives a reload and is listed', (await p.textContent('.worklist')).includes('Logging customer meetings'));
@@ -110,7 +111,7 @@ async function walkStep(p){ await p.waitForSelector('.question .token'); await a
   ok('map file: opens in another browser with its answers', g.view.includes('v-map') && g.done===2, JSON.stringify(g));
 
   /* phone: shortlist visible */
-  await q.click('.brand'); await q.click('text=Walk a Meridian process'); await q.click('.rolecard >> nth=0'); await q.waitForSelector('.station'); await wait(800);
+  await q.click('.brand'); await q.click('.startcard >> nth=0'); await q.click('.rolecard >> nth=0'); await q.waitForSelector('.station'); await wait(800);
   await q.click('.station >> text=Economists'); await wait(900);
   g = await q.evaluate(()=>{ const pk=document.querySelector('.pick').getBoundingClientRect(); return {vh:innerHeight, top:Math.round(pk.top), bottom:Math.round(pk.bottom)}; });
   ok('shortlist: the first choice is on screen and clear of the footer after one click (phone)', g.top>50 && g.bottom<g.vh-96, JSON.stringify(g));

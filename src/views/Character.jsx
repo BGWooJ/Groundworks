@@ -24,7 +24,7 @@ function progressReport(J){
 function progressCSV(p){
   const rows = [['measure','value'], ['lens', p.lens||''], ['rank', p.rank], ['xp', p.xp], ['walks completed', p.walksCompleted],
     ['complications met', p.complications.met], ['strong answers', p.complications.strongAnswers], ['own maps', p.ownMaps],
-    ['field reports collected', p.fieldReports.length], ['marks earned', p.marks.length]];
+    ['landmark cases collected', p.fieldReports.length], ['marks earned', p.marks.length]];
   Object.entries(p.standing).forEach(([k,v])=>rows.push(['standing: '+k, v]));
   p.skills.forEach(s=>rows.push(['match rate: '+s.skill, s.matchRate==null?'':s.matchRate+'%']));
   p.capabilityFamilies.forEach(s=>rows.push(['match rate: '+s.family, s.matchRate==null?'':s.matchRate+'%']));
@@ -61,7 +61,7 @@ export default function Character(){
         <p className="muted small">{P.complications} complications met, {P.strong} answered strongly.</p></section>
 
       <section className="sh-box"><h2 className="h3">Reading skills</h2>
-        <p className="muted small">How often your reads of Meridian steps match the field, question by question.</p>
+        <p className="muted small">How often your reads of Meridian steps match the Guide, question by question.</p>
         <ul className="skilllist">{SKILLS.map(s=>{ const L = skillLevel(P.skills[s.k]);
           return <li key={s.k}><span>{s.name}</span><Meter value={L.pct==null?0:Math.round(L.pct*100)} max={100} label={s.name}/><b>{L.pct==null ? '–' : Math.round(L.pct*100)+'%'}</b><Stars n={L.stars}/></li>; })}</ul></section>
 
@@ -75,8 +75,8 @@ export default function Character(){
           const isNew = fresh.current.marks.includes(m.id);
           return <li key={m.id} className={(on?'on':'') + (isNew?' fresh':'')} title={m.d}><span className="ins"><Icon name={on?m.icon:'lock'}/></span><b>{m.name}{isNew && <span className="newtag">New</span>}</b><span className="muted small">{m.d}</span></li>; })}</ul></section>
 
-      <section className="sh-box"><h2 className="h3">Field Library</h2>
-        <p>{collected} of {FIELD_REPORTS.length} real cases collected.</p><Meter value={collected} max={FIELD_REPORTS.length} label="Field Reports collected"/>
+      <section className="sh-box"><h2 className="h3">Case library</h2>
+        <p>{collected} of {FIELD_REPORTS.length} landmark cases collected.</p><Meter value={collected} max={FIELD_REPORTS.length} label="Landmark cases collected"/>
         <button className="btn secondary small mt" onClick={()=>actions.view('library')}><Icon name="book"/>Open the library</button></section>
 
       <section className="sh-box wide"><h2 className="h3">Your progress report</h2>

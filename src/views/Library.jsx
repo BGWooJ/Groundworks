@@ -1,4 +1,4 @@
-/* The Field Library: real cases, collected as you meet them in walks. */
+/* The case library: landmark cases, real and public, collected as you meet them in walks. */
 import {useState, useEffect, useRef} from 'react';
 import {useGame, actions} from '../game/store.js';
 import {FIELD_REPORTS} from '../content/fieldReports.js';
@@ -16,8 +16,8 @@ export default function Library(){
   const list = FIELD_REPORTS.filter(r=>filter==='all' || r.kind===filter);
   return <>
     <button className="linkbtn strong" onClick={actions.back}><Icon name="back"/>Back</button>
-    <header className="scene"><p className="kicker">{collected} of {FIELD_REPORTS.length} collected</p><h1>Field Library</h1>
-      <p className="lede">Real, public cases where organisations got this right or wrong. You collect each one when a step you read, or a complication you face, calls for it. Every figure is from the source named on the card.</p></header>
+    <header className="scene"><p className="kicker">{collected} of {FIELD_REPORTS.length} collected</p><h1>Case library</h1>
+      <p className="lede">Landmark cases: real, public cases where organisations got this right or wrong. You collect each one when a step you read, or a complication you face, calls for it. Every figure is from the source named on the card.</p></header>
     <div className="filters" role="group" aria-label="Show">{[['all','All'],['success','It worked'],['warning','Warnings'],['mixed','Mixed']].map(([k,l])=>
       <button key={k} className={'nchip ' + (filter===k?'on':'')} aria-pressed={filter===k} onClick={()=>setFilter(k)}>{l}</button>)}</div>
     <ul className="library">{list.map(r=>{ const have = !!codex[r.id];
