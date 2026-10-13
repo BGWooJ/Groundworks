@@ -238,7 +238,9 @@ const HINTS = {
 
 /* Complications are drawn from these slots: one part way through a walk,
    one before the finished map. Scores (s) label the feedback only. */
-const COMPLICATION_SLOTS = [['trail'], ['data','team','metric']];
+/* v4 listed only ['trail'] for the first slot, so the three 'sponsor' complications (the demo, the
+   brand name, the peer bank) could never fire. v5 and v6 draw them in the first slot. */
+const COMPLICATION_SLOTS = [['trail','sponsor'], ['data','team','metric']];
 
 const MARKS = [
   {id:'first',     icon:'flag',      name:'First map',              d:'Finish walking a process.'},
