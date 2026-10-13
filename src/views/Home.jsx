@@ -1,5 +1,6 @@
 import {useGame, actions, ALL_MARKS} from '../game/store.js';
-import {QUESTIONS} from '../game/flow.js';
+import {workItems, inProgress, ago, progressLabel} from '../game/journal.js';
+import {openItem, openLabel} from './Maps.jsx';
 import {rankOf, roleOf, ROLES} from '../game/rpg.js';
 import {FIELD_REPORTS} from '../content/fieldReports.js';
 import {FUNCTIONS} from '../content/meridian.js';
@@ -8,8 +9,8 @@ import {Icon, Art, Meter} from '../components/ui.jsx';
 export default function Home(){
   const J = useGame(s=>s.J), confirmClear = useGame(s=>s.S.confirmClear);
   const P = J.profile, r = rankOf(P.xp), role = roleOf(P.role);
-  const maps = Object.values(J.maps).sort((a,b)=>(b.updated||0)-(a.updated||0));
-  const any = Object.keys(J.marks).length || J.walks.length || maps.length || P.xp;
+  const work = workItems(J), resume = inProgress(J).slice(0,2);
+  const any = Object.keys(J.marks).length || work.length || P.xp;
   const processes = FUNCTIONS.reduce((n,f)=>n+f.processes.length, 0);
   const collected = Object.keys(P.codex).length;
   return <>
@@ -28,9 +29,16 @@ export default function Home(){
         <p className="kicker">A field game about where AI earns its keep</p>
         <h1>Groundwork</h1>
         <p className="hero-line">Break a process into its steps, and find where an LLM earns its keep, where a person must stay in charge, and where something simpler wins.</p>
+        {resume.length>0 && <div className="resume" aria-labelledby="resh">
+          <p className="resume-k" id="resh"><Icon name="flag"/>Pick up where you left off</p>
+          {resume.map(x=><button key={x.key} className="resume-item" onClick={()=>openItem(x)}>
+            <span className="ri-main"><b>{x.title}</b><span>{x.where}. {progressLabel(x)}{x.updated ? `, ${ago(x.updated)}` : ''}</span></span>
+            <span className="ri-go">{openLabel(x)}<Icon name="chev"/></span>
+          </button>)}
+        </div>}
         <div className="hero-actions">
-          <button className="btn brass big" onClick={actions.startGuided}><Icon name="map"/>Walk a Meridian process</button>
-          <button className="btn outline big" onClick={actions.startOwn}><Icon name="plot"/>Map your own process</button>
+          <button className={'btn big ' + (resume.length ? 'outline' : 'brass')} onClick={actions.startGuided}><Icon name="map"/>Walk a Meridian process</button>
+          <button className="btn outline big" onClick={actions.startOwn}><Icon name="plot"/>{Object.keys(J.maps).length ? 'Map a new process' : 'Map your own process'}</button>
         </div>
         <p className="hero-note">{processes} processes across {FUNCTIONS.length} parts of a fictional reserve bank, each with a field view to compare against, and {FIELD_REPORTS.length} real cases from the wider world. Your own maps stay in this browser.</p>
       </div>
@@ -57,12 +65,11 @@ export default function Home(){
               <b>{r.name}</b><Meter value={P.xp - r.floor} max={(r.next||P.xp+1) - r.floor} label="Progress to the next rank"/>
               <span className="muted small">{P.xp} XP{r.next ? `, ${r.next - P.xp} to ${r.nextName}` : ', the highest rank'}. {collected} of {FIELD_REPORTS.length} Field Reports.</span></span>
           </button>
-          <h3 className="mt">Your maps</h3>
-          {maps.length ? <ul className="maplist">{maps.map(m=>{
-            const done = m.steps.filter(st=>{ const a = (m.ans||{})[st.id]; return a && QUESTIONS.every(q=>a[q.k]); }).length;
-            return <li key={m.id}><div><b>{m.process||'Untitled process'}</b><span>{m.org||''}{m.org?'. ':''}{done} of {m.steps.length} steps read</span></div><button className="btn secondary small" onClick={()=>actions.openMap(m.id)}>Open</button></li>;
-          })}</ul> : <p className="muted">None yet. Maps of your own processes are saved here as you work.</p>}
-          {J.walks.length>0 && <><h3 className="mt">Recent walks</h3><ul className="walks">{J.walks.slice(0,4).map((w,i)=><li key={i}><b>{w.proc}</b><span>{w.summary}{w.xp?` ${w.xp} XP.`:''}</span></li>)}</ul></>}
+          <h3 className="mt">Your maps and walks</h3>
+          {work.length ? <ul className="maplist">{work.slice(0,5).map(x=><li key={x.key}><div><b>{x.title}</b><span>{x.where}. {progressLabel(x)}{x.updated ? `, ${ago(x.updated)}` : ''}</span></div>
+              {(x.kind!=='finished-walk' || x.reopenable) && <button className="btn secondary small" onClick={()=>openItem(x)}>{openLabel(x)}</button>}</li>)}</ul>
+            : <p className="muted">None yet. Everything you start is saved here as you go.</p>}
+          <button className="linkbtn" onClick={()=>actions.view('maps')}><Icon name="map"/>All my maps{work.length>5 ? ` (${work.length})` : ''}</button>
         </div>
         <div><h3>Marks</h3>
           <ul className="marks">{ALL_MARKS.map(m=>{

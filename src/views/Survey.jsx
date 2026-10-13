@@ -1,4 +1,6 @@
 /* The Meridian survey: read the Bank, shortlist, compare with the full survey, pick one. */
+import {useEffect, useRef} from 'react';
+import {m, AnimatePresence, useReducedMotion} from 'motion/react';
 import {useGame, actions} from '../game/store.js';
 import {FUNCTIONS, MAP_GROUPS} from '../content/meridian.js';
 import {getExpedition} from '../content/expeditions.js';
@@ -7,6 +9,63 @@ import {NEW_FUNCTIONS} from '../content/districts.js';
 import {Icon, Art, Emph, HeatBar} from '../components/ui.jsx';
 
 const NEW_IDS = NEW_FUNCTIONS.map(f=>f.id);
+
+/* When a department opens, keep its card in view and show as much of the drawer as fits. */
+const FOOTER = 96;   // the sticky "next step" bar at the bottom of the survey
+/* When a department opens, show as much as fits while the card you clicked stays on screen: the
+   next step if it fits, otherwise all the choices, otherwise the first one. Only if not even that
+   fits (a phone) does the card scroll away, leaving the drawer's own heading, which names the
+   department, under the top bar. */
+function revealDrawer(drawer, reduce){
+  const card = document.querySelector('.station.on'); if(!card || !drawer) return;
+  const bar = 84, limit = window.innerHeight - FOOTER - 12, c = card.getBoundingClientRect(), cardRoom = c.top - bar;
+  const scroll = by=>{ if(by) window.scrollBy({top:by, behavior: reduce ? 'auto' : 'smooth'}); };
+  const targets = ['.picknext', '.picks', '.pick'].map(q=>drawer.querySelector(q)).filter(Boolean);
+  for(const t of targets){
+    const over = t.getBoundingClientRect().bottom - limit;
+    if(over<=cardRoom) return scroll(over>0 ? over : Math.min(0, cardRoom));
+  }
+  const first = targets[targets.length-1] || drawer, over = first.getBoundingClientRect().bottom - limit;
+  scroll(Math.min(over, Math.max(drawer.getBoundingClientRect().top - bar, 0)));
+}
+
+function Drawer({fn, full, S}){
+  const reduce = useReducedMotion(), ref = useRef(null), t = {duration: reduce ? 0 : .22, ease:'easeOut'};
+  useEffect(()=>{ const h = setTimeout(()=>revealDrawer(ref.current, reduce), reduce ? 0 : 240); return ()=>clearTimeout(h); }, [fn.id, reduce]);
+  const count = S.shortlist.length;
+  useEffect(()=>{
+    if(!count || !ref.current) return;
+    const n = ref.current.querySelector('.picknext'); if(!n) return;
+    const r = n.getBoundingClientRect(), over = r.bottom - (window.innerHeight - FOOTER);
+    if(over>0) window.scrollBy({top:over, behavior: reduce ? 'auto' : 'smooth'});
+  }, [count]);
+  return <m.div className="drawer-wrap" ref={ref} initial={{height:0, opacity:0}} animate={{height:'auto', opacity:1}} exit={{height:0, opacity:0}} transition={t}>
+    <section className="drawer" id={'dept-'+fn.id} aria-label={`${fn.name}: processes to shortlist, and signals`}>
+      <m.div key={fn.id} initial={{opacity:0, y:reduce?0:6}} animate={{opacity:1, y:0}} transition={{duration: reduce ? 0 : .16}}>
+        <header className="dhead"><span className="dill"><Art kind="dept" id={fn.id}/></span><div><h2 className="h3">{fn.name}</h2><p><Emph text={fn.brief}/></p></div></header>
+        <div className="dgrid picks-first">
+          <div className="pickcol">
+            <h3 className="h4 pickhead">Choose what to shortlist<span className="pickcount" aria-live="polite">{S.shortlist.length} of 3 chosen</span></h3>
+            <ul className="picks">{fn.processes.map(p=>{ const on = S.shortlist.includes(p.id), blocked = !on && full;
+              return <li key={p.id}><button className={'pick' + (on?' on':'')} onClick={()=>actions.toggleShortlist(p.id)} aria-pressed={on} disabled={blocked}>
+                <span className="pick-box" aria-hidden="true"><Icon name={on?'check':'flag'}/></span>
+                <span className="pick-main"><b>{p.name}</b><span>{p.d}</span></span>
+                <span className="pick-state">{on ? 'Shortlisted' : (blocked ? 'Shortlist full' : 'Add to shortlist')}</span>
+              </button></li>; })}</ul>
+            <div className={'picknext' + (S.shortlist.length ? ' ready' : '')}>
+              {S.shortlist.length
+                ? <><span>{S.shortlist.length} of 3 shortlisted{S.shortlist.length<3 ? '. Add more from any part of the Bank, or move on.' : '.'}</span>
+                    <button className="btn brass" onClick={actions.toReveal}>Next: compare with the full survey<Icon name="chev"/></button></>
+                : <span>Pick up to three processes worth a closer look. You can choose from more than one part of the Bank.</span>}
+            </div>
+          </div>
+          <aside className="sigcol"><h3 className="h4">Signals</h3><ul className="signals">{fn.signals.map((sg,i)=><li key={i} className={'sig-'+sg.s}><span className="sig"/><span><Emph text={sg.t}/></span></li>)}</ul>
+            <p className="muted small">Signals are the evidence: volume, repetition and pain someone has measured. Strong ones are marked in brass.</p></aside>
+        </div>
+      </m.div>
+    </section>
+  </m.div>;
+}
 
 export function Terrain(){
   const S = useGame(s=>s.S);
@@ -19,33 +78,28 @@ export function Terrain(){
       <ul className="slots">{[0,1,2].map(i=>{
         const pid = S.shortlist[i];
         if(!pid) return <li key={i} className="slot empty"><span className="sf"><Icon name="flag"/></span><span>Open slot</span></li>;
-        const m = findProcessMeta(pid);
-        return <li key={pid} className="slot"><span className="sf"><Icon name="flag"/></span><span><b>{m.proc.name}</b><span>{m.fn.name}</span></span>
-          <button className="iconbtn" onClick={()=>actions.toggleShortlist(pid)} aria-label={`Remove ${m.proc.name}`}><Icon name="close"/></button></li>;
+        const mt = findProcessMeta(pid);
+        return <li key={pid} className="slot"><span className="sf"><Icon name="flag"/></span><span><b>{mt.proc.name}</b><span>{mt.fn.name}</span></span>
+          <button className="iconbtn" onClick={()=>actions.toggleShortlist(pid)} aria-label={`Remove ${mt.proc.name}`}><Icon name="close"/></button></li>;
       })}</ul></div>
+    {!fn && <p className="survey-hint"><Icon name="compass"/>Tap a part of the Bank and its processes open right beneath it. The glow marks where the evidence is strongest.</p>}
     <div className="survey">{MAP_GROUPS.map(g=><section key={g.id} className={'band g-' + g.id}>
       <h2 className="bh">{g.label}<span>{g.d}</span></h2>
       <div className="stations">{FUNCTIONS.filter(f=>f.group===g.id).map(f=>{
         const on = S.viewFn===f.id, flags = f.processes.filter(p=>S.shortlist.includes(p.id)).length;
-        return <button key={f.id} className={`station heat-${heatOf(f)} ${on?'on':''}`} onClick={()=>actions.viewFn(f.id)} aria-pressed={on} aria-expanded={on}>
+        return <button key={f.id} className={`station heat-${heatOf(f)} ${on?'on':''}`} onClick={()=>actions.viewFn(f.id)} aria-pressed={on} aria-expanded={on} aria-controls={'dept-'+f.id}>
           <span className="halo" aria-hidden="true"/><span className="sicon"><Icon name={f.icon}/></span>
-          <span className="sname">{f.name}</span><span className="scount">{f.processes.length} processes</span>
+          <span className="sname">{f.name}</span>
+          <span className="scount">{f.processes.length} processes<Icon name="chev" className="schev"/></span>
           {NEW_IDS.includes(f.id) && <span className="snew">New ground</span>}
           {flags>0 && <span className="sflag"><Icon name="flag"/>{flags}</span>}
         </button>;
       })}</div>
+      <AnimatePresence initial={false}>{fn && fn.group===g.id && <Drawer key={'drawer-'+g.id} fn={fn} full={full} S={S}/>}</AnimatePresence>
     </section>)}</div>
-    {fn ? <section className="drawer" aria-live="polite">
-      <header className="dhead"><span className="dill"><Art kind="dept" id={fn.id}/></span><div><h2 className="h3">{fn.name}</h2><p><Emph text={fn.brief}/></p></div></header>
-      <div className="dgrid">
-        <div><h3 className="h4">Signals</h3><ul className="signals">{fn.signals.map((s,i)=><li key={i} className={'sig-'+s.s}><span className="sig"/><span><Emph text={s.t}/></span></li>)}</ul></div>
-        <div><h3 className="h4">Processes</h3>{fn.processes.map(p=>{ const on = S.shortlist.includes(p.id);
-          return <div key={p.id} className={'proc ' + (on?'on':'')}><div><b>{p.name}</b><span>{p.d}</span></div>
-            <button className={`btn ${on?'flagged':'secondary'} small`} onClick={()=>actions.toggleShortlist(p.id)} aria-pressed={on} disabled={!on && full}><Icon name="flag"/>{on?'Shortlisted':'Shortlist'}</button></div>; })}</div>
-      </div></section>
-    : <div className="drawer empty"><p><Icon name="compass"/> Open any part of the Bank to read its signals. The glow marks where the evidence is strongest.</p></div>}
-    <div className="actions sticky"><span className="count">{S.shortlist.length} of 3 shortlisted</span>
-      <button className="btn primary" onClick={actions.toReveal} disabled={!S.shortlist.length}>Compare with the full survey</button></div>
+    <div className={'actions sticky' + (S.shortlist.length ? ' ready' : '')}><span className="count"><Icon name="flag"/>{S.shortlist.length} of 3 shortlisted</span>
+      <button key={S.shortlist.length} className={'btn ' + (S.shortlist.length ? 'brass nudge' : 'primary')} onClick={actions.toReveal} disabled={!S.shortlist.length}>
+        {S.shortlist.length ? 'Next: compare with the full survey' : 'Shortlist a process to continue'}</button></div>
   </>;
 }
 

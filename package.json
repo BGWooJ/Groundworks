@@ -8,10 +8,13 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "check": "node scripts/check-content.mjs"
+    "check": "node scripts/check-content.mjs",
+    "audit": "node scripts/audit-engine.mjs",
+    "golden": "node scripts/make-golden.mjs"
   },
   "dependencies": {
     "immer": "^11.1.21",
+    "motion": "^14.2.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

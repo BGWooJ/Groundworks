@@ -52,19 +52,26 @@ export const QUESTIONS = [
    opts:a=>BAND_CAPS[a.band||'core'].map(id=>({id, name:CAPS[id].name, d:CAPS[id].one})),
    field:st=>st.expertPick, alts:st=>[...st.fit.best, ...st.fit.ok]},
   {k:'auto',   label:'Autonomy',           q:'How much should it act on its own?',            opts:()=>AUTONOMY,
-   field:st=>st.autoBest, alts:st=>st.autoOk||[]},
-  {k:'where',  label:'Where it happens',   q:'Where does the work happen today?',             opts:()=>WHERE},
+   field:st=>st.autoBest, alts:st=>st.autoOk||[],
+   applies:a=>a.cap!=='fix'},                                    // a process fix has nothing to act on its own
+  {k:'where',  label:'Where it happens',   q:'Where does the work happen today?',             opts:()=>WHERE,
+   applies:a=>!a.band || a.band==='core' || a.band==='assist'},  // only separates the LLM tools
   {k:'builder',label:'Who would build it', q:'Who would build it?',                           opts:()=>BUILDERS, carry:true},
   {k:'sens',   label:'Data',               q:'How sensitive is the data?',                    opts:()=>SENSITIVITY, carry:true},
 ];
 export const SCORED = QUESTIONS.filter(q=>q.field);
 export function questionOf(k){ return QUESTIONS.find(q=>q.k===k); }
+/* v7: a question is asked only where its answer can change what the player is told. */
+export function asks(q, a){ return !q.applies || q.applies(a || {}); }
+export function askedQuestions(a){ return QUESTIONS.filter(q=>asks(q, a)); }
+/* Drop answers to questions that no longer apply, so a stale answer never reaches the engine. */
+export function pruneAnswers(a){ QUESTIONS.forEach(q=>{ if(!asks(q, a) && a[q.k]){ delete a[q.k]; if(a._carried) delete a._carried[q.k]; } }); return a; }
 
-export function answered(a){ return !!a && QUESTIONS.every(q=>a[q.k]); }
+export function answered(a){ return !!a && QUESTIONS.every(q=>!asks(q, a) || a[q.k]); }
 export function stepDone(S, st){ const a = S.ans[st.id]; if(!a) return false; return S.mode==='guided' ? !!a.revealed : answered(a); }
 export function nextUnanswered(a, from){
-  for(let i=from+1;i<QUESTIONS.length;i++) if(!a[QUESTIONS[i].k]) return i;
-  for(let i=0;i<QUESTIONS.length;i++) if(!a[QUESTIONS[i].k]) return i;
+  for(let i=from+1;i<QUESTIONS.length;i++) if(asks(QUESTIONS[i], a) && !a[QUESTIONS[i].k]) return i;
+  for(let i=0;i<QUESTIONS.length;i++) if(asks(QUESTIONS[i], a) && !a[QUESTIONS[i].k]) return i;
   return -1;
 }
 export function markOf(S, q, st, val){
@@ -76,10 +83,11 @@ export function markOf(S, q, st, val){
 }
 export function scoreRead(S, st){
   const a = S.ans[st.id] || {};
-  const marks = SCORED.map(q=>markOf(S, q, st, a[q.k]));
-  const score = marks.reduce((s,m)=>s + (m==='match'?1:(m==='near'?0.5:0)), 0), ratio = score/SCORED.length;
+  const scored = SCORED.filter(q=>asks(q, a));
+  const marks = scored.map(q=>markOf(S, q, st, a[q.k]));
+  const score = marks.reduce((s,m)=>s + (m==='match'?1:(m==='near'?0.5:0)), 0), ratio = score/scored.length;
   const tier = ratio>=.85?'great':(ratio>=.6?'good':(ratio>=.35?'mixed':'off'));
-  return {marks, score, ratio, tier};
+  return {marks, score, ratio, tier, of:scored.length};
 }
 
 /* Answers as the engine sees them, with the what-if switches applied in your own maps. */
@@ -190,8 +198,8 @@ export function buildExport(S){
     const e = stepEval(S, st), a = e.a, g = guardrailsFor(e);
     const o = {n:i+1, name:st.name, read:true,
       kindOfWork:optName(SHAPES,a.shape), inputs:optName(INPUTS,a.input), volume:optName(REPS,a.rep), stakes:optName(STAKES,a.stakes),
-      llmFit:bandName(a.band), capability:capName(a.cap), autonomy:optName(AUTONOMY,a.auto),
-      whereItHappens:optName(WHERE,a.where), whoWouldBuild:optName(BUILDERS,a.builder), dataSensitivity:optName(SENSITIVITY,a.sens),
+      llmFit:bandName(a.band), capability:capName(a.cap), autonomy:optName(AUTONOMY,a.auto) || 'Not applicable',
+      whereItHappens:optName(WHERE,a.where) || 'Not applicable', whoWouldBuild:optName(BUILDERS,a.builder), dataSensitivity:optName(SENSITIVITY,a.sens),
       value:levelName(e.value), feasibility:levelName(e.feas), verdict:VERDICTS[e.verdict].name,
       tool:e.tool?destOf(e.tool.winner).name:'', toolReason:whyTool(e.tool), guardrails:g.map(guardrailName)};
     if(e.nums) o.numbers = {perMonth:Math.round(e.nums.perMonth), hoursPerMonth:round(e.nums.hours), reworkHoursPerMonth:round(e.nums.rework)};
@@ -205,16 +213,96 @@ export function buildExport(S){
     heading:{destinations:h.leaders.map(id=>({tool:destOf(id).name, steps:h.by[id]}))}};
   const ch = !guided && S.own ? charterOut(S.own.charter) : null;
   if(ch) out.charter = ch;
+  const plan = planFor(S);
+  if(plan) out.plan = {headline:plan.headline,
+    phases:plan.phases.filter(p=>p.steps.length).map(p=>({phase:p.name, when:p.when, steps:p.steps.map(r=>({n:r.n, name:r.name, verdict:r.verdictName, firstMove:r.first}))})),
+    dependsOn:plan.depends.map(x=>({step:x.n, afterGroundworkOn:x.after})),
+    asksOfTheSponsor:plan.asks.map(a=>a.text), measures:plan.measures.map(m=>`${m.from}: ${m.text}`),
+    hours: plan.hours ? {perMonthAcrossSteps:round(plan.hours.total), onStepsWithAPlan:round(plan.hours.inPlay), stepsWithNumbers:plan.hours.steps} : null};
   return out;
 }
 export function lppPrompt(d){
   const rows = d.steps.filter(s=>s.read).map(s=>`${s.n}. ${s.name} | ${s.kindOfWork.toLowerCase()} | ${s.numbers?`${s.numbers.hoursPerMonth} hours a month`:s.volume.toLowerCase()+' volume'} | ${s.llmFit.toLowerCase()} | ${s.tool} | ${s.verdict.toLowerCase()}${s.description?` | ${s.description}`:''}`).join('\n');
   const ch = d.charter ? `\nThe change we want: ${d.charter.challenge || 'not stated'}\nSuccess looks like: ${d.charter.success || 'not stated'}\nTracking: ${d.charter.tracking || 'not stated'}. Audience: ${(d.charter.audience||[]).join(', ') || 'not stated'}.\n` : '';
-  return `Review this AI use-case map for one process. Challenge each verdict, flag risks we missed, and say which step to pilot first and why.${d.charter?' Check whether the plan supports the change we want and can be measured as described.':''}\n\nProcess: ${d.process}${d.organisation?` (${d.organisation})`:''}, ${d.steps.length} steps\n${ch}${rows}\n\nColumns: step | kind of work | volume | LLM fit | approved tool it points to | verdict.`;
+  const pl = d.plan ? `\n\nProposed sequence: ${d.plan.headline}\n${d.plan.phases.map(p=>`${p.phase} (${p.when}): ${p.steps.map(s=>`step ${s.n}`).join(', ')}`).join('\n')}${d.plan.asksOfTheSponsor.length ? `\nAsks of the sponsor:\n- ${d.plan.asksOfTheSponsor.join('\n- ')}` : ''}` : '';
+  return `Review this AI use-case map for one process. Challenge each verdict and the proposed sequence, flag risks we missed, and say which step to pilot first and why.${d.charter?' Check whether the plan supports the change we want and can be measured as described.':''}\n\nProcess: ${d.process}${d.organisation?` (${d.organisation})`:''}, ${d.steps.length} steps\n${ch}${rows}\n\nColumns: step | kind of work | volume | LLM fit | approved tool it points to | verdict.${pl}`;
 }
 export function csvCell(v){ v = v==null ? '' : String(v); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
 export function csvOf(d){
   const cols = ['n','name','kindOfWork','inputs','volume','stakes','llmFit','capability','autonomy','whereItHappens','whoWouldBuild','dataSensitivity','value','feasibility','verdict','tool','toolReason','perMonth','hoursPerMonth','reworkHoursPerMonth','guardrails','description'];
   const rows = d.steps.map(s=>cols.map(c=> c in (s.numbers||{}) ? s.numbers[c] : (c==='guardrails' ? (s.guardrails||[]).join('; ') : s[c])).map(csvCell).join(','));
   return [cols.join(',')].concat(rows).join('\n');
+}
+
+/* =====================================================================
+   THE PLAN (v7): turns a read map into a strategy. Steps are sequenced
+   by what their verdicts demand: clear the ground first, prove value on
+   the best candidate, build the plumbing alongside, park the rest. It
+   names what the sponsor has to decide or provide, and how success will
+   be measured. Pure, so it is tested and exported the same way it is shown.
+   ===================================================================== */
+export const PHASES = [
+  {id:'ground', name:'Clear the ground', when:'Weeks 1 to 4',
+   why:'Fix broken hand-offs, capture missing data and prepare inputs first. A pilot on top of these would measure the mess, not the tool.'},
+  {id:'prove',  name:'Prove it',         when:'Weeks 4 to 12',
+   why:'Pilot where the work suits the tool, against a baseline measured before anything is switched on. A person decides wherever the stakes call for it.'},
+  {id:'build',  name:'Build the plumbing', when:'Alongside, with system owners',
+   why:'Rules and integration need no AI. They are cheap, predictable and explainable, and they often remove work outright.'},
+  {id:'later',  name:'Park or keep simple', when:'Revisit in six months',
+   why:'Too rare to pay back a tool, or blocked for now. Name the blocker, use a checklist, and come back if the picture changes.'},
+];
+const PHASE_OF = {fix:'ground', capture:'ground', prepare:'ground', pilot:'prove', assist:'prove', engineering:'build', park:'later', small:'later'};
+
+export function planFor(S){
+  const read = S.steps.map((st,i)=>({st, i})).filter(x=>stepDone(S, x.st));
+  if(!read.length) return null;
+  const rows = read.map(({st, i})=>{ const e = stepEval(S, st); const v = VERDICTS[e.verdict];
+    return {n:i+1, name:st.name, verdict:e.verdict, verdictName:v.name, tone:v.tone, value:e.value, feas:e.feas, first:v.first, who:v.who,
+      tool:e.tool ? destOf(e.tool.winner).name : '', hours:e.nums ? e.nums.total : null, a:e.a,
+      metric: S.mode==='guided' ? st.metric : (e.nums ? `Hours a month on this step (about ${round(e.nums.total)} today), and how often it is redone` : 'Time per item, and how often it is redone')}; });
+  const best = startStep(S), startN = best ? S.steps.indexOf(best.st)+1 : null;
+  const phases = PHASES.map(p=>({...p, steps: rows.filter(r=>PHASE_OF[r.verdict]===p.id)
+    .sort((x,y)=> (y.n===startN) - (x.n===startN) || LV[y.value]-LV[x.value] || x.n-y.n)}));
+
+  // a step that comes after one needing groundwork may depend on what that step produces
+  const ground = rows.filter(r=>PHASE_OF[r.verdict]==='ground');
+  const depends = rows.filter(r=>['prove','build'].includes(PHASE_OF[r.verdict])).map(r=>{
+    const before = ground.filter(g=>g.n<r.n);
+    return before.length ? {n:r.n, name:r.name, after:before.map(g=>g.n), phase:PHASE_OF[r.verdict]} : null; }).filter(Boolean);
+
+  const list = xs=> xs.length>1 ? `steps ${xs.slice(0,-1).join(', ')} and ${xs[xs.length-1]}` : `step ${xs[0]}`;
+  const where = pred=> rows.filter(pred).map(r=>r.n);
+  const asks = [];
+  const add = (ns, text)=>{ if(ns.length) asks.push({steps:ns, text:text.replace('{s}', list(ns))}); };
+  add(where(r=>r.verdict==='assist'), 'Name the accountable decision owner for {s}. The tool prepares; a person decides and owns the outcome.');
+  add(where(r=>r.verdict==='fix'), 'Give the process owner, and whoever owns the step before it, permission to change how {s} works.');
+  add(where(r=>r.verdict==='capture'), 'Agree where the inputs and outcomes of {s} will be recorded, and by whom. Nothing can be read until they are.');
+  add(where(r=>r.a.sens==='personal'), 'Start the privacy review for {s} now. Personal or confidential data shapes which tool can be used.');
+  add(where(r=>r.a.builder==='unsure' && PHASE_OF[r.verdict]!=='later'), 'Decide who builds {s}. Nobody has been named yet, and it decides which tool fits.');
+  add(where(r=>r.a.builder==='dev' && ['prove','build'].includes(PHASE_OF[r.verdict])), 'Secure developer time for {s}.');
+  add(where(r=>r.verdict==='engineering'), 'Bring the system owners for {s} in early: the work is rules and integration in their systems.');
+  const c = S.mode==='own' && S.own ? S.own.charter : null;
+  if(c && c.tracking==='manual') asks.push({steps:[], text:'Find a way to track success that the systems already record. Mostly manual tracking tends to fade within a month.'});
+  if(c && c.audience && c.audience.includes('practitioner')) asks.push({steps:[], text:'Release time for the people who do the work to help design and test it. They will spot its errors first.'});
+
+  const measures = [];
+  if(c && c.success && c.success.trim()) measures.push({from:'Your charter', text:c.success.trim()});
+  rows.filter(r=>['prove','ground'].includes(PHASE_OF[r.verdict])).slice(0,4).forEach(r=>measures.push({from:`Step ${r.n}`, text:r.metric}));
+
+  const withHours = rows.filter(r=>r.hours!=null);
+  const hours = withHours.length ? {
+    total: withHours.reduce((s,r)=>s+r.hours, 0),
+    inPlay: withHours.filter(r=>['prove','build','ground'].includes(PHASE_OF[r.verdict])).reduce((s,r)=>s+r.hours, 0),
+    steps: withHours.length, of: rows.length} : null;
+
+  const firstGround = phases[0].steps.map(r=>r.n), start = rows.find(r=>r.n===startN);
+  let headline;
+  if(start && PHASE_OF[start.verdict]==='prove') headline = `Start by piloting step ${start.n}, ${start.name.toLowerCase()} (${start.verdictName.toLowerCase()})` + (firstGround.length ? `, while the groundwork on ${list(firstGround)} is done.` : '.');
+  else if(firstGround.length) headline = `Start with groundwork on ${list(firstGround)}. No step is ready to pilot until that is done.`;
+  const builds = phases[2].steps.map(r=>r.n);
+  if(builds.length && headline.startsWith('Start')) headline += ` ${builds.length>1 ? 'Steps' : 'Step'} ${builds.length>1 ? builds.slice(0,-1).join(', ') + ' and ' + builds[builds.length-1] : builds[0]} can be built alongside, with rules and integration.`;
+  else if(phases[2].steps.length) headline = `The answer here is mostly engineering: ${list(phases[2].steps.map(r=>r.n))} can be built with rules and integration.`;
+  else headline = 'Nothing here needs a new tool now. Keep it simple, and revisit if the volume or the picture changes.';
+
+  return {headline, phases, depends, asks, measures, hours, charter: c && (c.challenge || c.success) ? c : null};
 }

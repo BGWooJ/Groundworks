@@ -1,4 +1,4 @@
-import {DIMS} from '../content/meridian.js';
+import {DIMS, SHAPES, CAPS} from '../content/meridian.js';
 /* ---------- Scoring helpers (guided mode) ---------- */
 const LEVEL_IDX = {low:0, mid:1, high:2};
 
@@ -297,6 +297,25 @@ function challengesOf(a, nums){
   if(nums && a.rep==='low' && nums.total>=40) push('rep',`You said it is rare, but your numbers come to about ${round(nums.total)} hours a month.`);
   if(nums && a.rep==='high' && nums.total<5) push('rep',`You said high volume, but your numbers come to only about ${round(nums.total)} hours a month.`);
   if(a.band==='other' && a.builder==='team') push('builder','Forecasting, optimisation and vision models are built and maintained, not used off the shelf. Who would own the model?');
+
+  /* v7: the kind of work has to agree with the LLM call and the capability. Before v7 the first
+     question changed almost nothing: reading, looking up, drafting and summarising led to identical
+     advice. These challenges are appended after the v4 ones, so v4's list is always a prefix. */
+  const llm = a.band==='core' || a.band==='assist';
+  if(llm && a.shape==='predict') push('band','You read this as estimating or forecasting. That is usually a prediction model, a different kind of AI from an LLM.');
+  if(llm && a.shape==='allocate') push('band','You read this as fitting work into limited capacity. That is usually an optimisation model, a different kind of AI from an LLM.');
+  if(llm && a.shape==='physical') push('band','This is physical work. Software helps it mainly by seeing (vision) or planning (optimisation); an LLM rarely fits.');
+  if(a.shape && a.cap && !out.some(c=>c.q==='band')){
+    const fits = suggestCaps(a).caps;
+    if(fits.length && !fits.some(c=>c.id===a.cap)){
+      const names = fits.slice(0,3).map(c=>CAPS[c.id].name);
+      const list = names.length>1 ? names.slice(0,-1).join(', ') + ' or ' + names[names.length-1] : names[0];
+      const shape = (SHAPES.find(x=>x.id===a.shape)||{}).name || a.shape;
+      push('cap', `For \u201c${shape}\u201d work the usual fits are ${list}. Is ${CAPS[a.cap].name} really what this step needs?`);
+    }
+  }
+  if(a.where==='paper' && (a.input==='text' || a.input==='structured'))
+    push('input','The work happens on paper, but you said it starts from typed text or system records. If it starts on paper, it has to be scanned and read before any tool can use it.');
   return out;
 }
 

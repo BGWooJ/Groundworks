@@ -17,6 +17,11 @@ const DESTINATIONS = [
   {id:'none',       name:'No new tool',    what:'Fix the process instead',
    about:'The answer is a change to how the work is done, or a capability the Bank already owns.'},
 ];
+/* When two destinations score the same, the earlier one here wins. The order runs from the least
+   to build to the most (use it directly, then wire it up, then have developers build it), with
+   "no new tool" last because it is only the answer when nothing else is earned.
+   This was implicit (array order) in v4; making it a named constant makes content audits reproducible. */
+const TIE_ORDER = DESTINATIONS.map(d=>d.id);
 function destOf(id){ return DESTINATIONS.find(d=>d.id===id); }
 
 /* Score one step. Returns {winner, scores, reasons:{dest:[sentences]}} or null if not enough is known. */
@@ -36,14 +41,18 @@ function scoreTools(a){
     add('codehelper', b==='dev' ? 4 : 2, 'Forecasting, optimisation and vision models are built and maintained, not chatted with.');
     if(b!=='dev') add('none', 1, 'This needs a data science team more than a new tool.');
   } else {
-    if(a.cap==='agent' || a.shape==='coordinate'){
+    const agentic = a.cap==='agent' || a.shape==='coordinate';
+    if(agentic){
       add('lppplus', 3, 'It has to act across systems, not just answer.');
       add('studio', 2, 'A low-code agent can connect the systems it touches.');
     } else {
       add('lpp', 2, 'Reading, answering or drafting in language is what the LLM suite does well.');
       add('copilot', 1);
     }
-    if(sens==='personal'){ add('lpp', 3, 'Personal or confidential data stays inside the air-gapped suite.'); s.copilot -= 1; }
+    /* Personal data keeps the work inside the air-gapped suite. For an agentic step that is LPP Plus,
+       which shares the boundary and can act; plain LPP cannot act, so crediting it here made it tie
+       with LPP Plus and win on array order (v4 behaviour, fixed in v6). */
+    if(sens==='personal'){ add(agentic ? 'lppplus' : 'lpp', 3, 'Personal or confidential data stays inside the air-gapped suite.'); s.copilot -= 1; }
     if(where==='office' && sens!=='personal') add('copilot', 3, 'The work already happens in Outlook, Word, Excel and Teams.');
     if(where==='system' && a.auto!=='assist') add('studio', 2, 'It has to run inside a business system, connected through its APIs.');
     if(a.rep==='high' && ['extract','classify'].includes(a.cap) && a.auto!=='assist')
@@ -52,7 +61,7 @@ function scoreTools(a){
     if(b==='lowcode') add('studio', 1, 'A power user can build it with low code.');
     if(b==='team') add(where==='office' && sens!=='personal' ? 'copilot' : 'lpp', 1, 'Staff can use it directly, with nothing to build.');
   }
-  const ranked = DESTINATIONS.map(d=>d.id).sort((x,y)=>s[y]-s[x]);
+  const ranked = TIE_ORDER.slice().sort((x,y)=>s[y]-s[x]);
   return {winner:ranked[0], runnerUp: s[ranked[1]] >= s[ranked[0]]-1 && s[ranked[1]]>0 ? ranked[1] : null, scores:s, reasons:r};
 }
 function whyTool(t){ return t && t.reasons[t.winner] && t.reasons[t.winner].length ? t.reasons[t.winner].join(' ') : ''; }
@@ -77,4 +86,4 @@ function stepsLabel(nums){
   return `Steps ${nums.slice(0,-1).join(', ')} and ${nums[nums.length-1]}`;
 }
 
-export {DESTINATIONS, destOf, scoreTools, whyTool, processHeading, stepsLabel};
+export {DESTINATIONS, TIE_ORDER, destOf, scoreTools, whyTool, processHeading, stepsLabel};

@@ -7,7 +7,8 @@ export default function OwnSetup(){
   const notes = charterNotes(c);
   return <div className="narrow">
     <header className="scene"><p className="kicker">Your own ground</p><h1>Name the process, then list its steps</h1>
-      <p className="lede">One process, the way it actually runs, start to finish. Three to eight steps is normal. You will read each one on the map.</p></header>
+      <p className="lede">One process, the way it actually runs, start to finish. Three to eight steps is normal. You will read each one on the map.</p>
+      <p className="saved-note"><Icon name="check"/>Saved in this browser as you type. Looking for a map you started before? <button className="linkbtn" onClick={()=>actions.view('maps')}>Open My maps</button></p></header>
     <div className="form">
       <div className="field"><label htmlFor="org">Organisation or team</label><input className="in" id="org" value={o.org} onChange={e=>actions.ownField('org', e.target.value)} placeholder="For example, Benefits organization"/></div>
       <div className="field"><label htmlFor="proc">The process</label><input className="in" id="proc" value={o.process} onChange={e=>actions.ownField('process', e.target.value)} placeholder="For example, benefits inquiries and enrolment"/><span className="hint">Something that happens many times, not once a year.</span></div>
