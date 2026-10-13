@@ -11,28 +11,56 @@ import {Icon, Art, Emph, HeatBar} from '../components/ui.jsx';
 const NEW_IDS = NEW_FUNCTIONS.map(f=>f.id);
 
 /* When a department opens, keep its card in view and show as much of the drawer as fits. */
+const FOOTER = 96;   // the sticky "next step" bar at the bottom of the survey
+/* When a department opens, show as much as fits while the card you clicked stays on screen: the
+   next step if it fits, otherwise all the choices, otherwise the first one. Only if not even that
+   fits (a phone) does the card scroll away, leaving the drawer's own heading, which names the
+   department, under the top bar. */
 function revealDrawer(drawer, reduce){
   const card = document.querySelector('.station.on'); if(!card || !drawer) return;
-  const bar = 84, c = card.getBoundingClientRect(), d = drawer.getBoundingClientRect();
-  const overflow = d.bottom - (window.innerHeight - 24);
-  if(overflow<=0 && c.top>=bar) return;                       // already comfortably in view
-  const room = c.top - bar;                                   // never scroll the card under the top bar
-  const by = overflow>0 ? Math.min(overflow, Math.max(room, 0)) : Math.min(0, room);
-  if(by) window.scrollBy({top:by, behavior: reduce ? 'auto' : 'smooth'});
+  const bar = 84, limit = window.innerHeight - FOOTER - 12, c = card.getBoundingClientRect(), cardRoom = c.top - bar;
+  const scroll = by=>{ if(by) window.scrollBy({top:by, behavior: reduce ? 'auto' : 'smooth'}); };
+  const targets = ['.picknext', '.picks', '.pick'].map(q=>drawer.querySelector(q)).filter(Boolean);
+  for(const t of targets){
+    const over = t.getBoundingClientRect().bottom - limit;
+    if(over<=cardRoom) return scroll(over>0 ? over : Math.min(0, cardRoom));
+  }
+  const first = targets[targets.length-1] || drawer, over = first.getBoundingClientRect().bottom - limit;
+  scroll(Math.min(over, Math.max(drawer.getBoundingClientRect().top - bar, 0)));
 }
 
 function Drawer({fn, full, S}){
   const reduce = useReducedMotion(), ref = useRef(null), t = {duration: reduce ? 0 : .22, ease:'easeOut'};
   useEffect(()=>{ const h = setTimeout(()=>revealDrawer(ref.current, reduce), reduce ? 0 : 240); return ()=>clearTimeout(h); }, [fn.id, reduce]);
+  const count = S.shortlist.length;
+  useEffect(()=>{
+    if(!count || !ref.current) return;
+    const n = ref.current.querySelector('.picknext'); if(!n) return;
+    const r = n.getBoundingClientRect(), over = r.bottom - (window.innerHeight - FOOTER);
+    if(over>0) window.scrollBy({top:over, behavior: reduce ? 'auto' : 'smooth'});
+  }, [count]);
   return <m.div className="drawer-wrap" ref={ref} initial={{height:0, opacity:0}} animate={{height:'auto', opacity:1}} exit={{height:0, opacity:0}} transition={t}>
-    <section className="drawer" id={'dept-'+fn.id} aria-label={`${fn.name}: signals and processes`}>
+    <section className="drawer" id={'dept-'+fn.id} aria-label={`${fn.name}: processes to shortlist, and signals`}>
       <m.div key={fn.id} initial={{opacity:0, y:reduce?0:6}} animate={{opacity:1, y:0}} transition={{duration: reduce ? 0 : .16}}>
         <header className="dhead"><span className="dill"><Art kind="dept" id={fn.id}/></span><div><h2 className="h3">{fn.name}</h2><p><Emph text={fn.brief}/></p></div></header>
-        <div className="dgrid">
-          <div><h3 className="h4">Signals</h3><ul className="signals">{fn.signals.map((sg,i)=><li key={i} className={'sig-'+sg.s}><span className="sig"/><span><Emph text={sg.t}/></span></li>)}</ul></div>
-          <div><h3 className="h4">Processes</h3>{fn.processes.map(p=>{ const on = S.shortlist.includes(p.id);
-            return <div key={p.id} className={'proc ' + (on?'on':'')}><div><b>{p.name}</b><span>{p.d}</span></div>
-              <button className={`btn ${on?'flagged':'secondary'} small`} onClick={()=>actions.toggleShortlist(p.id)} aria-pressed={on} disabled={!on && full}><Icon name="flag"/>{on?'Shortlisted':'Shortlist'}</button></div>; })}</div>
+        <div className="dgrid picks-first">
+          <div className="pickcol">
+            <h3 className="h4 pickhead">Choose what to shortlist<span className="pickcount" aria-live="polite">{S.shortlist.length} of 3 chosen</span></h3>
+            <ul className="picks">{fn.processes.map(p=>{ const on = S.shortlist.includes(p.id), blocked = !on && full;
+              return <li key={p.id}><button className={'pick' + (on?' on':'')} onClick={()=>actions.toggleShortlist(p.id)} aria-pressed={on} disabled={blocked}>
+                <span className="pick-box" aria-hidden="true"><Icon name={on?'check':'flag'}/></span>
+                <span className="pick-main"><b>{p.name}</b><span>{p.d}</span></span>
+                <span className="pick-state">{on ? 'Shortlisted' : (blocked ? 'Shortlist full' : 'Add to shortlist')}</span>
+              </button></li>; })}</ul>
+            <div className={'picknext' + (S.shortlist.length ? ' ready' : '')}>
+              {S.shortlist.length
+                ? <><span>{S.shortlist.length} of 3 shortlisted{S.shortlist.length<3 ? '. Add more from any part of the Bank, or move on.' : '.'}</span>
+                    <button className="btn brass" onClick={actions.toReveal}>Next: compare with the full survey<Icon name="chev"/></button></>
+                : <span>Pick up to three processes worth a closer look. You can choose from more than one part of the Bank.</span>}
+            </div>
+          </div>
+          <aside className="sigcol"><h3 className="h4">Signals</h3><ul className="signals">{fn.signals.map((sg,i)=><li key={i} className={'sig-'+sg.s}><span className="sig"/><span><Emph text={sg.t}/></span></li>)}</ul>
+            <p className="muted small">Signals are the evidence: volume, repetition and pain someone has measured. Strong ones are marked in brass.</p></aside>
         </div>
       </m.div>
     </section>
@@ -69,8 +97,9 @@ export function Terrain(){
       })}</div>
       <AnimatePresence initial={false}>{fn && fn.group===g.id && <Drawer key={'drawer-'+g.id} fn={fn} full={full} S={S}/>}</AnimatePresence>
     </section>)}</div>
-    <div className="actions sticky"><span className="count">{S.shortlist.length} of 3 shortlisted</span>
-      <button className="btn primary" onClick={actions.toReveal} disabled={!S.shortlist.length}>Compare with the full survey</button></div>
+    <div className={'actions sticky' + (S.shortlist.length ? ' ready' : '')}><span className="count"><Icon name="flag"/>{S.shortlist.length} of 3 shortlisted</span>
+      <button key={S.shortlist.length} className={'btn ' + (S.shortlist.length ? 'brass nudge' : 'primary')} onClick={actions.toReveal} disabled={!S.shortlist.length}>
+        {S.shortlist.length ? 'Next: compare with the full survey' : 'Shortlist a process to continue'}</button></div>
   </>;
 }
 

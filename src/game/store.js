@@ -17,14 +17,14 @@ import {reportFor, reportById} from '../content/fieldReports.js';
 import {NEW_FUNCTIONS} from '../content/districts.js';
 import {FUNCTIONS} from '../content/meridian.js';
 import {XP, rankOf, blankStats, applyStats, roleOf} from './rpg.js';
-import {QUESTIONS, SCORED, answered, stepDone, nextUnanswered, markOf, readSteps, nextOpenIndex, stepEval,
+import {QUESTIONS, SCORED, asks, pruneAnswers, answered, stepDone, nextUnanswered, markOf, readSteps, nextOpenIndex, stepEval,
   familyOfCap, whoName, teamOf, shuffle, buildExport, lppPrompt, csvOf, slug, heatOf} from './flow.js';
 import {play, setSound} from '../audio/sound.js';
 
 /* ---------- persistence ---------- */
 const JKEY = 'gw_journal_v4', OLD_KEYS = ['gw_journal_v1'], SKEY = 'gw_settings_v5', GKEY = 'gw_guide';
-export function blankProfile(){ return {role:null, xp:0, stats:blankStats(), skills:{}, families:{}, codex:{}, exported:{}, walks:0, complications:0, strong:0, seen:{}}; }
-export function blankJournal(){ return {marks:{}, flagships:[], walks:[], maps:{}, profile:blankProfile()}; }
+export function blankProfile(){ return {role:null, xp:0, stats:blankStats(), skills:{}, families:{}, codex:{}, exported:{}, walks:0, complications:0, strong:0, seen:{}, unseen:{marks:[], reports:[], rank:null}}; }
+export function blankJournal(){ return {marks:{}, flagships:[], walks:[], maps:{}, progress:{}, profile:blankProfile()}; }
 function read(key){ try{ return localStorage.getItem(key); }catch(e){ return null; } }
 function write(key, v){ try{ localStorage.setItem(key, v); }catch(e){ /* private mode: play on without saving */ } }
 function loadJournal(){
@@ -33,6 +33,7 @@ function loadJournal(){
     const out = Object.assign(blankJournal(), j);
     out.profile = Object.assign(blankProfile(), j.profile || {});
     out.profile.stats = Object.assign(blankStats(), out.profile.stats || {});
+    out.profile.unseen = Object.assign({marks:[], reports:[], rank:null}, out.profile.unseen || {});
     return out;
   }catch(e){ return blankJournal(); }
 }
@@ -58,12 +59,12 @@ export function fresh(guide){
     dug:{}, compl:{fired:[], answers:[]}, modal:null,
     whatif:{double:false, digital:false, devs:false},
     includeDesc:false, confirmClear:false, setupError:false, finishedOnce:false,
-    walk:{start:null, stats:null, xp:0, reports:[]},
+    walk:{start:null, stats:null, xp:0, reports:[], marks:[], ranks:[]},
     gui:{open:false, tier:1, key:null, auto:{}},
   };
 }
 
-let state = {S:fresh(), J:loadJournal(), settings:loadSettings(), toasts:[], popups:[], sfx:[]};
+let state = {S:fresh(), J:loadJournal(), settings:loadSettings(), toasts:[], popups:[], spot:[], sfx:[]};
 setSound(state.settings.sound, state.settings.volume);
 const listeners = new Set();
 let uid = 0;
@@ -72,9 +73,18 @@ export function getState(){ return state; }
 export function subscribe(l){ listeners.add(l); return ()=>listeners.delete(l); }
 export function useGame(sel){ return useSyncExternalStore(subscribe, ()=>sel(state)); }
 
+/* v7: a walk or map in progress is saved on every change, so it can always be picked up again,
+   from Home, from My maps, or after a reload. */
+function needsSave(prevS){
+  const S = state.S;
+  if(S.mode==='guided') return !!S.procId && !S.finishedOnce && (S.ans!==prevS.ans || S.dug!==prevS.dug || S.compl!==prevS.compl || S.cur!==prevS.cur || S.walk!==prevS.walk || S.procId!==prevS.procId);
+  if(S.mode==='own') return !!S.own && (S.own!==prevS.own || S.ans!==prevS.ans);
+  return false;
+}
 export function update(fn){
   const prev = state;
   state = produce(state, fn);
+  if(needsSave(prev.S)) state = produce(state, d=>{ if(d.S.mode==='guided') saveWalk(d); else saveOwn(d); });
   if(state.J!==prev.J) write(JKEY, JSON.stringify(state.J));
   if(state.settings!==prev.settings) write(SKEY, JSON.stringify(state.settings));
   if(state.S.guide!==prev.S.guide) write(GKEY, state.S.guide);
@@ -103,6 +113,9 @@ export function touch(){ activity.last = Date.now(); }
 
 /* ---------- feedback helpers (inside a draft) ---------- */
 function toast(d, title, text, icon){ d.toasts.push({id:++uid, title, text, icon:icon||'mark'}); if(d.toasts.length>3) d.toasts.shift(); }
+/* v7: marks, ranks and new cases queue for the spotlight, shown one at a time until seen.
+   Nothing is ever dropped, and each one is also kept as unseen until the player looks. */
+function spotlight(d, item, delay){ d.spot.push(Object.assign({id:++uid, notBefore:Date.now() + (delay||600)}, item)); }
 function sfx(d, name){ d.sfx.push(name); }
 function gain(d, n, label){
   if(!(n>0)) return;
@@ -111,24 +124,32 @@ function gain(d, n, label){
   d.popups.push({id:++uid, n, label}); if(d.popups.length>4) d.popups.shift();
   const r = rankOf(d.J.profile.xp);
   if(r.index>before){
-    /* A toast now; the full celebration waits for the finished map, so it never hides a reveal. */
-    sfx(d, 'levelup');
-    toast(d, `New rank: ${r.name}`, 'Your reads are sharper for it.', 'shieldup');
-    d.S.rankUp = r.name;
+    spotlight(d, {kind:'rank', title:'A new rank', name:r.name, text:'Your reads of the work are getting sharper.', icon:'shieldup'}, d.S.view==='step' ? 2800 : 600);
+    d.J.profile.unseen.rank = r.name;
+    d.S.walk.ranks.push(r.name);
   }
 }
 function award(d, id){
   if(d.J.marks[id]) return;
   d.J.marks[id] = true;
-  const m = ALL_MARKS.find(x=>x.id===id); if(m){ toast(d, `Mark earned: ${m.name}`, m.d, m.icon); sfx(d, 'mark'); }
+  const m = ALL_MARKS.find(x=>x.id===id); if(!m) return;
+  // marks earned at the same moment (the end of a walk) share one card
+  const last = d.spot[d.spot.length-1], entry = {id, name:m.name, d:m.d, icon:m.icon};
+  if(last && last.kind==='mark' && Date.now() - last.created < 1500){
+    last.marks.push(entry); last.title = `${last.marks.length} marks earned`;
+    last.name = last.marks.map(x=>x.name).join(', ').replace(/, ([^,]*)$/, ' and $1'); last.text = '';
+  } else spotlight(d, {kind:'mark', title:'Mark earned', name:m.name, text:m.d, icon:m.icon, markId:id, marks:[entry], created:Date.now()});
+  if(!d.J.profile.unseen.marks.includes(id)) d.J.profile.unseen.marks.push(id);
+  if(!d.S.walk.marks.includes(id)) d.S.walk.marks.push(id);
 }
 function collect(d, id){
   if(!id || d.J.profile.codex[id]) return;
   d.J.profile.codex[id] = Date.now();
   if(!d.S.walk.reports.includes(id)) d.S.walk.reports.push(id);
-  const r = reportById(id);
   gain(d, XP.report, 'Field report');
-  toast(d, 'New in your Field Library', r ? r.title : '', 'book');
+  // the case is already on screen where it was met (the reveal or the complication), so no spotlight:
+  // it is counted as new on the Library button until the player opens the library
+  if(!d.J.profile.unseen.reports.includes(id)) d.J.profile.unseen.reports.push(id);
   if(Object.keys(d.J.profile.codex).length>=5) award(d, 'library5');
 }
 function record(rec, mark){ rec.n++; rec.pts += mark==='match' ? 1 : (mark==='near' ? 0.5 : 0); }
@@ -139,8 +160,26 @@ function syncGuideKey(d){
 }
 function ansOf(S, st){ return S.ans[st.id] || (S.ans[st.id] = {}); }
 function saveOwn(d){
-  const S = d.S; if(S.mode!=='own' || !S.own) return;
-  d.J.maps[S.own.id] = {id:S.own.id, org:S.own.org, process:S.own.process, steps:S.own.steps, charter:S.own.charter, ans:S.ans, updated:Date.now()};
+  const S = d.S, o = S.own; if(S.mode!=='own' || !o) return;
+  // a setup nobody has typed into yet is not worth keeping
+  if(!o.started && !o.process.trim() && !o.steps.some(x=>x.name.trim())) return;
+  d.J.maps[o.id] = {id:o.id, org:o.org, process:o.process, steps:o.steps, charter:o.charter, ans:S.ans,
+    started:!!o.started, finishedXp:!!o.finishedXp, updated:Date.now()};
+}
+function saveWalk(d){
+  const S = d.S;
+  d.J.progress[S.procId] = {procId:S.procId, ans:S.ans, dug:S.dug, cur:S.cur, walk:S.walk,
+    // a complication still open when the player leaves is offered again, not counted as spent
+    compl:{fired:S.compl.fired.slice(0, S.compl.answers.length), answers:S.compl.answers, flags:S.compl.flags || []},
+    updated:Date.now()};
+}
+function restoreWalk(d, pid, rec, extra){
+  resetTo(d, Object.assign({mode:'guided', view:'map'}, extra || {}));
+  const S = d.S;
+  S.procId = pid; S.steps = getExpedition(pid).steps; S.ans = rec.ans || {}; S.dug = rec.dug || {};
+  S.compl = {fired:(rec.compl && rec.compl.fired) || [], answers:(rec.compl && rec.compl.answers) || [], flags:(rec.compl && rec.compl.flags) || []};
+  S.walk = Object.assign({start:null, stats:null, xp:0, reports:[], marks:[], ranks:[]}, rec.walk || {});
+  S.cur = rec.cur || 0;
 }
 function openStepIn(d, i){
   const S = d.S; S.cur = i; S.view = 'step';
@@ -166,7 +205,7 @@ function openSurvey(d){
 /* ---------- home, roles, journal ---------- */
 export const actions = {
   home(){ navigate(d=>{ resetTo(d); }); },
-  view(v){ navigate(d=>{ d.S.prevView = d.S.view==='character'||d.S.view==='library' ? d.S.prevView : d.S.view; d.S.view = v; }); },
+  view(v){ navigate(d=>{ if(!['character','library','maps'].includes(d.S.view)) d.S.prevView = d.S.view; d.S.view = v; }); },
   back(){ navigate(d=>{ d.S.view = d.S.prevView || 'home'; d.S.prevView = null; }); },
   chooseRole(id){
     navigate(d=>{
@@ -202,11 +241,28 @@ export const actions = {
   toPick(){ navigate(d=>{ d.S.view = 'pick'; }); },
   pickProc(pid){
     navigate(d=>{
+      const saved = d.J.progress[pid];
+      if(saved){ restoreWalk(d, pid, saved); d.S.resumed = true; sfx(d, 'page'); return; }
       const e = getExpedition(pid), S = d.S;
-      S.procId = pid; S.steps = e.steps; S.ans = {}; S.dug = {}; S.view = 'map';
-      S.walk = {start:Object.assign({}, d.J.profile.stats), stats:Object.assign({}, d.J.profile.stats), xp:0, reports:[]};
+      S.mode = 'guided'; S.procId = pid; S.steps = e.steps; S.ans = {}; S.dug = {}; S.view = 'map';
+      S.walk = {start:Object.assign({}, d.J.profile.stats), stats:Object.assign({}, d.J.profile.stats), xp:0, reports:[], marks:[], ranks:[]};
       sfx(d, 'page');
     });
+  },
+  resumeWalk(pid){ const rec = state.J.progress[pid]; if(!rec) return; navigate(d=>{ restoreWalk(d, pid, rec); d.S.resumed = true; sfx(d, 'page'); }); },
+  /* Start the same process again from scratch; the old progress is dropped. */
+  restartWalk(){
+    navigate(d=>{ const pid = d.S.procId; delete d.J.progress[pid];
+      d.S.ans = {}; d.S.dug = {}; d.S.cur = 0; d.S.compl = {fired:[], answers:[]}; d.S.resumed = false;
+      d.S.walk = {start:Object.assign({}, d.J.profile.stats), stats:Object.assign({}, d.J.profile.stats), xp:0, reports:[], marks:[], ranks:[]};
+      d.S.view = 'map'; });
+  },
+  discardWalk(pid){ update(d=>{ delete d.J.progress[pid]; toast(d, 'Walk removed', getExpedition(pid).name, 'trash'); }); },
+  /* Reopen a finished walk's map, read-only: nothing is scored or awarded twice. */
+  openWalk(i){
+    const w = state.J.walks[i]; if(!w) return;
+    if(!w.ans) return update(d=>{ toast(d, 'Only the summary was kept', 'This walk was finished before v7, when finished maps were not stored. Walks from now on can be reopened.', 'notes'); });
+    navigate(d=>{ restoreWalk(d, w.procId, w, {view:'finished', finishedOnce:true, reopened:true}); });
   },
 
   /* ---------- your own process ---------- */
@@ -222,9 +278,30 @@ export const actions = {
   },
   openMap(id){
     const m = state.J.maps[id]; if(!m) return;
-    navigate(d=>{ resetTo(d, {mode:'own', view:'map'});
-      d.S.own = {id:m.id, org:m.org, process:m.process, steps:m.steps, charter:m.charter || {challenge:'', success:'', tracking:'', audience:[]}};
-      d.S.steps = m.steps; d.S.ans = m.ans || {}; });
+    // maps saved before v7 have no "started" flag; they were only ever saved once started
+    const started = m.started!==undefined ? m.started : true;
+    navigate(d=>{ resetTo(d, {mode:'own', view: started ? 'map' : 'own-setup'});
+      d.S.own = {id:m.id, org:m.org, process:m.process, steps:m.steps, started, finishedXp:!!m.finishedXp,
+        charter:m.charter || {challenge:'', success:'', tracking:'', audience:[]}};
+      d.S.steps = started ? m.steps : []; d.S.ans = m.ans || {}; sfx(d, 'page'); });
+  },
+  deleteMap(id){ update(d=>{ const m = d.J.maps[id]; delete d.J.maps[id]; toast(d, 'Map deleted', m ? m.process || 'Untitled process' : '', 'trash'); }); },
+  saveMapFile(id){
+    const m = state.J.maps[id || (state.S.own && state.S.own.id)]; if(!m) return;
+    download(`groundwork-${slug(m.process)}.map.json`, JSON.stringify({source:'Groundwork', kind:'map', version:7, saved:new Date().toISOString(), map:m}, null, 2), 'application/json');
+    update(d=>{ toast(d, 'Map file saved', 'Open it from My maps in any browser to carry on where you left off.', 'download'); });
+  },
+  /* Open a map file saved from Groundwork, in this browser or any other. */
+  openMapFile(text){
+    let f; try{ f = JSON.parse(text); }catch(e){ f = null; }
+    const m = f && f.source==='Groundwork' && f.kind==='map' && f.map;
+    if(!m || !Array.isArray(m.steps) || !m.steps.length){
+      return update(d=>{ toast(d, 'That file is not a Groundwork map', 'Use "Save map file" on a map to make one. Exports for LPP or Copilot Studio cannot be reopened.', 'x'); });
+    }
+    let id = m.id || ('m' + Date.now().toString(36));
+    if(state.J.maps[id] && state.J.maps[id].updated!==m.updated) id = id + '-' + Date.now().toString(36);
+    update(d=>{ d.J.maps[id] = Object.assign({}, m, {id, updated:Date.now()}); toast(d, 'Map opened', m.process || 'Untitled process', 'map'); });
+    actions.openMap(id);
   },
   ownField(k, v){ update(d=>{ d.S.own[k] = v; }); },
   ownStep(idx, k, v){ update(d=>{ d.S.own.steps[idx][k] = v; }); },
@@ -236,8 +313,8 @@ export const actions = {
     navigate(d=>{
       const o = d.S.own, steps = o.steps.filter(s=>s.name.trim());
       if(!o.process.trim() || steps.length<2){ d.S.setupError = true; return; }
-      d.S.setupError = false; o.steps = steps; d.S.steps = steps; d.S.view = 'map';
-      saveOwn(d); award(d, 'ownmap');
+      d.S.setupError = false; o.steps = steps; o.started = true; d.S.steps = steps; d.S.view = 'map';
+      award(d, 'ownmap');
       if(o.charter && o.charter.challenge.trim() && o.charter.success.trim()) award(d, 'charter');
       sfx(d, 'page');
     });
@@ -255,13 +332,13 @@ export const actions = {
       const S = d.S, st = S.steps[S.cur], a = ansOf(S, st), q = QUESTIONS.find(x=>x.k===k);
       a[k] = v; if(a._carried) delete a._carried[k];
       if(k==='band' && a.cap && !(QUESTIONS[5].opts(a).some(o=>o.id===a.cap))) delete a.cap;
+      pruneAnswers(a);
       sfx(d, 'select');
       next = nextUnanswered(a, QUESTIONS.indexOf(q));
       if(S.mode==='own' && answered(a) && !a._xp){
         a._xp = true; gain(d, XP.ownStep, 'Step read'); sfx(d, 'stamp');
         if(S.steps.every(x=>answered(S.ans[x.id])) && !S.own.finishedXp){ S.own.finishedXp = true; gain(d, XP.ownMap, 'Map complete'); }
       }
-      saveOwn(d);
       S.advTok = (S.advTok || 0) + 1;
     });
     const tok = state.S.advTok;
@@ -277,7 +354,7 @@ export const actions = {
       const S = d.S, st = S.steps[S.cur], a = ansOf(S, st), P = d.J.profile;
       a.revealed = true; S.q = -1;
       let gained = 0;
-      SCORED.forEach(q=>{
+      SCORED.filter(q=>asks(q, a)).forEach(q=>{
         const m = markOf(S, q, st, a[q.k]);
         record(P.skills[q.k] || (P.skills[q.k] = {n:0, pts:0}), m);
         gained += m==='match' ? XP.match : (m==='near' ? XP.near : 0);
@@ -300,7 +377,6 @@ export const actions = {
       if(n==null){
         if(d.S.mode==='guided') finishGuided(d);
         d.S.view = 'finished'; sfx(d, 'finish');
-        if(d.S.rankUp && !d.S.modal){ d.S.modal = {type:'levelup', rank:d.S.rankUp}; d.S.rankUp = null; }
       }
       else { openStepIn(d, n); sfx(d, 'page'); }
     });
@@ -340,8 +416,8 @@ export const actions = {
   guideStall(){ update(d=>{ const g = d.S.gui; if(g.auto[g.key]) return; g.auto[g.key] = true; g.open = true; }); },
 
   /* ---------- numbers (your own map) ---------- */
-  numSet(k, v){ update(d=>{ const a = ansOf(d.S, d.S.steps[d.S.cur]); (a.nums || (a.nums = {per:'month'}))[k] = v; saveOwn(d); }); },
-  numRework(v){ update(d=>{ const a = ansOf(d.S, d.S.steps[d.S.cur]); const n = a.nums || (a.nums = {per:'month'}); n.rework = n.rework===v ? '' : v; saveOwn(d); sfx(d, 'tap'); }); },
+  numSet(k, v){ update(d=>{ const a = ansOf(d.S, d.S.steps[d.S.cur]); (a.nums || (a.nums = {per:'month'}))[k] = v; }); },
+  numRework(v){ update(d=>{ const a = ansOf(d.S, d.S.steps[d.S.cur]); const n = a.nums || (a.nums = {per:'month'}); n.rework = n.rework===v ? '' : v; sfx(d, 'tap'); }); },
 
   /* ---------- taking it further ---------- */
   exported(kind){
@@ -369,6 +445,9 @@ export const actions = {
     update(d=>{ d.settings.sound = on; if(on) sfx(d, 'xp'); });
   },
   setVolume(v){ setSound(state.settings.sound, v); update(d=>{ d.settings.volume = v; }); },
+  spotDone(id){ update(d=>{ d.spot = d.spot.filter(x=>x.id!==id); }); },
+  /* The character sheet and library clear what they show as new. */
+  markSeen(kind){ update(d=>{ const u = d.J.profile.unseen; if(kind==='reports') u.reports = []; else { u.marks = []; u.rank = null; } }); },
   dismissToast(id){ update(d=>{ d.toasts = d.toasts.filter(t=>t.id!==id); }); },
   dismissPopup(id){ update(d=>{ d.popups = d.popups.filter(t=>t.id!==id); }); },
   sound(name){ play(name); },
@@ -406,7 +485,7 @@ function finishGuided(d){
   const steps = S.steps;
   if(steps.some(st=>S.ans[st.id].band==='none' && expertBand(st)==='none')) award(d, 'saidno');
   if(steps.every(st=>S.ans[st.id].band===expertBand(st))) award(d, 'inagree');
-  if(steps.every(st=>S.ans[st.id].auto===st.autoBest)) award(d, 'steady');
+  if(steps.every(st=>{ const x = S.ans[st.id]; return x.cap==='fix' ? st.expertPick==='fix' : x.auto===st.autoBest; })) award(d, 'steady');
   if(steps.every(st=>S.dug[st.id])) award(d, 'digger');
   if(S.compl.answers.length>=2 && S.compl.answers.every(s=>s===2)) award(d, 'coolhead');
   const w = S.walk;
@@ -414,7 +493,9 @@ function finishGuided(d){
   gain(d, XP.walk, 'Walk complete');
   P.walks++;
   const agree = steps.filter(st=>S.ans[st.id].band===expertBand(st)).length;
-  d.J.walks.unshift({proc:exp.name, summary:`Matched the field’s LLM call on ${agree} of ${steps.length} steps.`, xp:w.xp, when:Date.now()});
+  d.J.walks.unshift({proc:exp.name, summary:`Matched the field’s LLM call on ${agree} of ${steps.length} steps.`, xp:w.xp, when:Date.now(),
+    procId:S.procId, ans:S.ans, dug:S.dug, walk:w, compl:{fired:S.compl.fired, answers:S.compl.answers, flags:S.compl.flags || []}});
+  delete d.J.progress[S.procId];
   d.J.walks = d.J.walks.slice(0,8);
 }
 

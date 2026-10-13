@@ -3,10 +3,10 @@ import {useState, useEffect, useRef} from 'react';
 import {useGame, actions} from '../game/store.js';
 import {AUTONOMY, SHAPES} from '../content/meridian.js';
 import {REACT, HINTS, GUIDANCE} from '../content/story.js';
-import {BANDS, VERDICTS, MINUTE_CHIPS, REWORK, numbersOf, numbersSentence, expertBand, bandName, challengesOf} from '../engine/engine.js';
+import {BANDS, BAND_CAPS, VERDICTS, MINUTE_CHIPS, REWORK, numbersOf, numbersSentence, expertBand, bandName, challengesOf, suggestCaps, suggestAutonomy} from '../engine/engine.js';
 import {DESTINATIONS, destOf} from '../engine/tools.js';
 import {reportFor, reportById} from '../content/fieldReports.js';
-import {QUESTIONS, SCORED, answered, markOf, scoreRead, stepEval, stepDone, nextOpenIndex, pointerFor, optName, capName, fill,
+import {QUESTIONS, SCORED, asks, askedQuestions, answered, markOf, scoreRead, stepEval, stepDone, nextOpenIndex, pointerFor, optName, capName, fill,
   whoName, teamOf, splitVolume, levelName, guardrailsFor, guardrailName, familyOfCap, LV} from '../game/flow.js';
 import {ROLES} from '../game/rpg.js';
 import {Icon, Art, Emph, Emblem, Chip} from '../components/ui.jsx';
@@ -113,24 +113,50 @@ function hueOf(k, id){
   if(k==='stakes' || k==='rep') return 'h-lv-' + id;
   return '';
 }
+/* v7: in your own maps, the answers you have already given point at the answers that usually follow:
+   capabilities that fit the kind of work, the bands that hold them, the autonomy the stakes call for.
+   Guided walks stay unhinted, because there the read is the test. */
+function adviceFor(S, q, a){
+  if(S.mode!=='own') return null;
+  const tag = {}, why = {};
+  if(q.k==='cap' && a.shape){
+    const r = suggestCaps(a);
+    r.caps.forEach(c=>{ tag[c.id] = c.tier==='best' ? 'Fits this work' : 'Could work'; why[c.id] = c.why; });
+    return {tag, why, notes:r.cautions, first:true};
+  }
+  if(q.k==='band' && a.shape){
+    const r = suggestCaps(a), best = r.caps.filter(c=>c.tier==='best').map(c=>c.id);
+    Object.keys(BAND_CAPS).forEach(b=>{ if(BAND_CAPS[b].some(c=>best.includes(c))) tag[b] = 'Holds a usual fit'; });
+    return {tag, why, notes:r.cautions};
+  }
+  if(q.k==='auto' && a.stakes){ tag[suggestAutonomy(a)] = 'Usual for these stakes'; return {tag, why, notes:[]}; }
+  return null;
+}
 function Question({S, q, a, st}){
-  const opts = q.opts(a), sel = a[q.k];
+  const advice = adviceFor(S, q, a);
+  let opts = q.opts(a);
+  if(advice && advice.first) opts = opts.slice().sort((x,y)=>(advice.tag[y.id]==='Fits this work'?2:(advice.tag[y.id]?1:0)) - (advice.tag[x.id]==='Fits this work'?2:(advice.tag[x.id]?1:0)));
+  const sel = a[q.k];
   const [hover, setHover] = useState(null);
   const shown = hover || sel, shownO = opts.find(o=>o.id===shown);
   const many = opts.length>6, isAuto = q.k==='auto', isShape = q.k==='shape';
-  const def = shownO ? shownO.d : 'Point at an option to see what it means.';
+  const def = shownO ? ((advice && advice.why[shown]) || shownO.d) : 'Point at an option to see what it means.';
   return <div className="question" data-q={q.k}>
     <h3>{q.q}</h3>
+    {advice && advice.notes.length>0 && <ul className="qnotes">{advice.notes.map((n,i)=><li key={i}><Icon name="near"/>{n}</li>)}</ul>}
     <div className={`opts ${many?'many':''} ${isAuto?'trio':''}`} role="radiogroup" aria-label={q.label} onMouseLeave={()=>setHover(null)}>
-      {opts.map(o=><button key={o.id} className={`token ${hueOf(q.k, o.id)} ${sel===o.id?'on':''}`} role="radio" aria-checked={sel===o.id}
-        onClick={()=>actions.answer(q.k, o.id)} onMouseEnter={()=>setHover(o.id)} onFocus={()=>setHover(o.id)} onBlur={()=>setHover(null)}>
-        {isAuto && <span className="oill"><Art kind="auto" id={o.id}/></span>}
-        <b>{o.name}</b>{!many && o.d && <span>{o.d}</span>}
-        <span className="tstamp" aria-hidden="true"><Icon name="check"/></span>
-      </button>)}
+      {opts.map(o=>{ const t = advice && advice.tag[o.id];
+        return <button key={o.id} className={`token ${hueOf(q.k, o.id)} ${sel===o.id?'on':''} ${t?'fits':''}`} role="radio" aria-checked={sel===o.id}
+          aria-description={t || undefined}
+          onClick={()=>actions.answer(q.k, o.id)} onMouseEnter={()=>setHover(o.id)} onFocus={()=>setHover(o.id)} onBlur={()=>setHover(null)}>
+          {isAuto && <span className="oill"><Art kind="auto" id={o.id}/></span>}
+          <b>{o.name}</b>{!many && o.d && <span>{o.d}</span>}
+          {t && <em className="ttag"><Icon name="spark"/>{t}</em>}
+          <span className="tstamp" aria-hidden="true"><Icon name="check"/></span>
+        </button>; })}
     </div>
     {isShape ? <div className="qrow"><div className="qill">{shown && <Art kind="shape" id={shown}/>}</div><p className="def" aria-live="polite">{def}</p></div>
-      : (many ? <p className="def" aria-live="polite">{def}</p> : null)}
+      : (many || advice ? <p className="def" aria-live="polite">{def}</p> : null)}
     {S.gui.open && <GuideCard S={S} q={q} a={a} st={st}/>}
   </div>;
 }
@@ -204,7 +230,7 @@ function RevealGuided({S, st, a}){
     setTimeout(()=>actions.sound('stamp'), 520 + R.marks.length*170 + 200);
   }, [st.id]);
   return <div className="reveal-seq">
-    <div className={`agree t-${R.tier}`}><span className="ag">{Math.round(R.score*10)/10}<small> of {SCORED.length}</small></span><p>{line('rv:'+st.id, REACT.profile[R.tier])}</p></div>
+    <div className={`agree t-${R.tier}`}><span className="ag">{Math.round(R.score*10)/10}<small> of {R.of}</small></span><p>{line('rv:'+st.id, REACT.profile[R.tier])}</p></div>
     <div className={'fieldread ' + (bandOk?'ok':'differs')}>
       <h3>{bandOk ? 'The field agrees on the LLM call' : `The field reads it as: ${bandName(expertBand(st))}`}</h3>
       <p>{st.expertWhy}</p><p className="small">{st.autoNote}</p></div>
@@ -237,7 +263,7 @@ function ResultOwn({S, st, a}){
 function ReadPanel({S, st, a}){
   const guided = S.mode==='guided', revealed = guided && a.revealed, done = answered(a);
   let qi = S.q; if(revealed || (done && qi<0)) qi = -1;
-  const count = QUESTIONS.filter(q=>a[q.k]).length;
+  const asked = askedQuestions(a), count = asked.filter(q=>a[q.k]).length;
   return <>
     <div className="rhead"><h2 id="readh">Your read</h2>{!revealed && !done && <span className="muted small">Each question folds into a row once answered. Tap a row to change it.</span>}</div>
     <div className={'arows ' + (revealed?'revealed':'')}>{QUESTIONS.map((q,i)=>{
@@ -256,7 +282,7 @@ function ReadPanel({S, st, a}){
       return revealed ? <div key={q.k} className={'arow ' + (mk?'m-'+mk:'')} style={{'--si':si<0?0:si}}>{inner}</div>
         : <button key={q.k} className="arow" onClick={()=>actions.reopen(q.k)} aria-label={`Change: ${q.label}, ${name}`}>{inner}<span className="rc"><Icon name="chev"/></span></button>;
     })}</div>
-    {!done && <p className="muted small qcount"><span className="qbar"><i style={{width:Math.round(count/QUESTIONS.length*100)+'%'}}/></span>{count} of {QUESTIONS.length} answered</p>}
+    {!done && <p className="muted small qcount"><span className="qbar"><i style={{width:Math.round(count/asked.length*100)+'%'}}/></span>{count} of {asked.length} answered</p>}
     {done && guided && !revealed && <div className="actions"><button className="btn brass big" data-focus="reveal" onClick={actions.reveal}><Icon name="spark"/>Compare with the field</button></div>}
     {done && (guided ? (revealed && <RevealGuided S={S} st={st} a={a}/>) : <ResultOwn S={S} st={st} a={a}/>)}
   </>;

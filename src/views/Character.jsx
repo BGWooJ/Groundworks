@@ -1,4 +1,5 @@
 /* The character sheet: lens, rank, standing, skills, mastery, insignia, and the private progress report. */
+import {useEffect, useRef} from 'react';
 import {useGame, actions, ALL_MARKS, download} from '../game/store.js';
 import {ROLES, roleOf, rankOf, RANKS, STATS, STAT_MAX, SKILLS, skillLevel} from '../game/rpg.js';
 import {CAP_FAMILIES} from '../content/meridian.js';
@@ -32,6 +33,10 @@ function progressCSV(p){
 
 export default function Character(){
   const J = useGame(s=>s.J), P = J.profile;
+  // what was new when the sheet opened stays highlighted while it is open, then counts as seen
+  const fresh = useRef(null);
+  if(!fresh.current) fresh.current = {marks:(P.unseen && P.unseen.marks) || [], rank:P.unseen && P.unseen.rank};
+  useEffect(()=>{ actions.markSeen('marks'); }, []);
   const r = rankOf(P.xp), role = roleOf(P.role);
   const collected = Object.keys(P.codex).length;
   return <>
@@ -41,7 +46,7 @@ export default function Character(){
         <div className="sh-portrait"><Art kind="role" id={P.role || 'practitioner'}/></div>
         <div>
           <p className="kicker">{role ? `${role.name}, ${role.level.toLowerCase()}` : 'No lens chosen yet'}</p>
-          <h1>{r.name}</h1>
+          <h1>{r.name}{fresh.current.rank && <span className="newtag">New rank</span>}</h1>
           <div className="sh-xp"><Meter value={P.xp - r.floor} max={(r.next||P.xp+1) - r.floor} label="Progress to the next rank" tone="brass"/>
             <span className="muted small">{P.xp} XP{r.next ? `. ${r.next - P.xp} more to ${r.nextName}.` : '. The highest rank.'}</span></div>
           {role && <p className="sh-perk"><Icon name="spark"/>{role.perk}</p>}
@@ -67,7 +72,8 @@ export default function Character(){
 
       <section className="sh-box"><h2 className="h3">Insignia</h2>
         <ul className="insignia">{ALL_MARKS.map(m=>{ const on = !!J.marks[m.id];
-          return <li key={m.id} className={on?'on':''} title={m.d}><span className="ins"><Icon name={on?m.icon:'lock'}/></span><b>{m.name}</b><span className="muted small">{m.d}</span></li>; })}</ul></section>
+          const isNew = fresh.current.marks.includes(m.id);
+          return <li key={m.id} className={(on?'on':'') + (isNew?' fresh':'')} title={m.d}><span className="ins"><Icon name={on?m.icon:'lock'}/></span><b>{m.name}{isNew && <span className="newtag">New</span>}</b><span className="muted small">{m.d}</span></li>; })}</ul></section>
 
       <section className="sh-box"><h2 className="h3">Field Library</h2>
         <p>{collected} of {FIELD_REPORTS.length} real cases collected.</p><Meter value={collected} max={FIELD_REPORTS.length} label="Field Reports collected"/>

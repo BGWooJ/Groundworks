@@ -101,11 +101,15 @@ export default function MapView(){
     <header className="scene withill"><div className="sh"><p className="kicker">{org || 'Your process'}</p><h1>Where would an LLM earn its keep?</h1>
       <p className="lede">{n} steps, in the order the work happens. Read each one, starting with the highlighted step.</p></div>
       {exp && <div className="hill"><Art kind="dept" id={exp.fnId}/></div>}</header>
+    {S.resumed && S.mode==='guided' && <p className="callout back"><Icon name="flag"/><span>Welcome back. Your answers are as you left them.</span>
+      <button className="linkbtn" onClick={actions.restartWalk}>Start this walk again</button></p>}
     <Charter S={S}/>
     <MapRow S={S}/>
+    <p className="saved-note"><Icon name="check"/>Saved in this browser as you go. Find it again any time under <button className="linkbtn" onClick={()=>actions.view('maps')}>My maps</button>.</p>
     {(next==null || S.mode==='own') && <div className="actions">
       {next==null && <button className="btn primary" onClick={actions.toFinished}>See the finished map</button>}
       {S.mode==='own' && <button className="btn ghost" onClick={actions.ownEdit}>Edit the steps and charter</button>}
+      {S.mode==='own' && <button className="btn ghost" onClick={()=>actions.saveMapFile()}><Icon name="download"/>Save map file</button>}
     </div>}
     <Heading S={S}/>
   </>;

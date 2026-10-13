@@ -1,11 +1,11 @@
 /* The finished map, the debrief, and taking the map further. */
-import {useGame, actions} from '../game/store.js';
+import {useGame, actions, ALL_MARKS} from '../game/store.js';
 import {getExpedition} from '../content/expeditions.js';
 import {VERDICTS} from '../engine/engine.js';
 import {destOf, whyTool} from '../engine/tools.js';
 import {reportById} from '../content/fieldReports.js';
 import {STATS, standingLine, rankOf} from '../game/rpg.js';
-import {stepDone, stepEval, startStep, finishedTitle, whatifChanges, guardrailsFor, guardrailName, levelName, round, buildExport, lppPrompt} from '../game/flow.js';
+import {stepDone, stepEval, startStep, finishedTitle, whatifChanges, guardrailsFor, guardrailName, levelName, round, buildExport, lppPrompt, planFor} from '../game/flow.js';
 import {MapRow, Heading} from './MapView.jsx';
 import {Icon, Emblem} from '../components/ui.jsx';
 import {StatShift} from '../components/Feedback.jsx';
@@ -29,9 +29,44 @@ function Debrief({S}){
     <p className="sponsor">{standingLine(delta)}</p>
     <div className="dbgrid">
       <div><h3 className="h4">Your standing this walk</h3><StatShift d={delta}/>{!Object.values(delta).some(Boolean) && <p className="muted small">No complications moved your standing.</p>}</div>
-      <div><h3 className="h4">Earned</h3><p className="xpbig">+{w.xp} XP</p></div>
+      <div><h3 className="h4">Earned</h3><p className="xpbig">+{w.xp} XP</p>
+        {((w.marks||[]).length>0 || (w.ranks||[]).length>0) && <ul className="earned">
+          {(w.ranks||[]).map(r=><li key={r}><Icon name="shieldup"/>New rank: <b>{r}</b></li>)}
+          {(w.marks||[]).map(id=>{ const m = ALL_MARKS.find(x=>x.id===id); return m ? <li key={id}><Icon name={m.icon}/>Mark: <b>{m.name}</b></li> : null; })}
+        </ul>}
+        {((w.marks||[]).length>0 || (w.ranks||[]).length>0) && <button className="linkbtn" onClick={()=>actions.view('character')}>See them on your character sheet</button>}</div>
       <div><h3 className="h4">Field Reports met</h3>{w.reports.length ? <ul className="mini">{w.reports.map(id=><li key={id}><button className="linkbtn" onClick={()=>actions.seeReport(id)}><Icon name="book"/>{reportById(id).title}</button></li>)}</ul> : <p className="muted small">None new on this walk.</p>}</div>
     </div></section>;
+}
+
+
+/* v7: the finished map as a strategy, not a list of verdicts. */
+function Plan({S}){
+  const p = planFor(S); if(!p) return null;
+  return <section className="plan" aria-labelledby="planh">
+    <header className="plan-head"><p className="kicker">The plan</p><h2 id="planh">{p.headline}</h2>
+      {p.charter && p.charter.challenge && <p className="plan-charter"><b>The change you want.</b> {p.charter.challenge}</p>}
+      {p.hours && <p className="plan-hours">{Math.round(p.hours.inPlay)===Math.round(p.hours.total)
+          ? <>All of about <b>{round(p.hours.total).toLocaleString()}</b> hours a month go on steps the plan acts on</>
+          : <><b>{round(p.hours.inPlay).toLocaleString()}</b> of about <b>{round(p.hours.total).toLocaleString()}</b> hours a month go on steps the plan acts on</>}
+        {p.hours.steps<p.hours.of ? ` (numbers given for ${p.hours.steps} of ${p.hours.of} steps)` : ''}.</p>}
+    </header>
+    <ol className="phases">{p.phases.map((ph,i)=><li key={ph.id} className={'phase p-' + ph.id + (ph.steps.length ? '' : ' empty')}>
+      <span className="ph-n">{i+1}</span>
+      <div className="ph-head"><b>{ph.name}</b><span>{ph.when}</span></div>
+      <p className="ph-why">{ph.why}</p>
+      {ph.steps.length ? <ul className="ph-steps">{ph.steps.map(r=><li key={r.n}><Emblem verdict={r.verdict} size={22}/>
+          <span><b>Step {r.n}. {r.name}</b><span className="muted small">{r.verdictName}{r.tool ? `, ${r.tool}` : ''}</span><span className="ph-first">First move: {r.first}</span></span></li>)}</ul>
+        : <p className="muted small">No steps here.</p>}
+    </li>)}</ol>
+    {p.depends.length>0 && <div className="plan-deps"><Icon name="near"/><div><b>Check the order.</b>{p.depends.map(x=><p key={x.n}>Step {x.n}, {x.name.toLowerCase()}, comes after step{x.after.length>1?'s':''} {x.after.join(' and ')}, which need{x.after.length>1?'':'s'} groundwork first. If it uses what {x.after.length>1?'those steps produce':'that step produces'}, {x.phase==='prove' ? 'its pilot waits for the groundwork' : 'build it after the groundwork, not before'}.</p>)}</div></div>}
+    <div className="plan-grid">
+      <div><h3 className="h4">What the sponsor needs to decide or provide</h3>
+        {p.asks.length ? <ol className="asks">{p.asks.map((a,i)=><li key={i}>{a.text}</li>)}</ol> : <p className="muted small">Nothing beyond the time of the people involved.</p>}</div>
+      <div><h3 className="h4">How you will know it worked</h3>
+        <ul className="measures">{p.measures.map((m,i)=><li key={i}><span className="muted small">{m.from}</span>{m.text}</li>)}</ul></div>
+    </div>
+  </section>;
 }
 
 export default function Finished(){
@@ -52,7 +87,9 @@ export default function Finished(){
   return <>
     <header className="scene"><p className="kicker">{S.mode==='guided' ? getExpedition(S.procId).name : S.own.process}, all steps read</p><h1>{t.h1}</h1><p className="lede">{t.lede}</p></header>
     {anyWi && <p className="callout wi-on"><Icon name="spark"/>What-if view. The map shows what would change; switch everything off to see your answers again.</p>}
+    {S.reopened && <p className="callout back"><Icon name="map"/><span>A finished walk, reopened. Nothing is scored again; take it further or walk the process afresh.</span></p>}
     <MapRow S={S} final/>
+    <Plan S={S}/>
     {S.mode==='guided' && <Debrief S={S}/>}
     <Heading S={S} final/>
     <div className="fgrid">{start}<section className="mbox"><h2 className="h4">Value and feasibility</h2><Matrix S={S}/></section></div>
