@@ -12,6 +12,21 @@
 </head>
 <body>
 <div id="app"></div>
+<script>
+  /* If the game cannot start, say so instead of leaving a blank page. React replaces this when it renders. */
+  (function(){
+    function show(){
+      var app = document.getElementById('app');
+      if(!app || app.childElementCount) return;
+      app.innerHTML = '<main style="max-width:34rem;margin:12vh auto;padding:0 1.25rem;font:1.05rem/1.55 \'Atkinson Hyperlegible\',system-ui,sans-serif;color:#173B36">'
+        + '<h1 style="font:600 1.6rem/1.2 Literata,Georgia,serif;margin:0 0 .75rem">Groundwork did not start</h1>'
+        + '<p>Try reloading the page.</p>'
+        + '<p>If it stays like this, the site may have been published without being built. In the repository on GitHub, open <b>Settings</b>, then <b>Pages</b>, and set <b>Source</b> to <b>GitHub Actions</b>.</p></main>';
+    }
+    window.addEventListener('error', function(e){ if(e.target && e.target.tagName === 'SCRIPT') show(); }, true);
+    setTimeout(show, 10000);
+  })();
+</script>
 <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>
