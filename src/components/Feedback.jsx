@@ -1,5 +1,6 @@
 /* Toasts, experience pop-ups and the dialogs: complications, rank-ups and Field Reports. */
 import {useEffect, useRef} from 'react';
+import {m, AnimatePresence, useReducedMotion} from 'motion/react';
 import {useGame, actions, ALL_EVENTS} from '../game/store.js';
 import {fill} from '../game/flow.js';
 import {reportById} from '../content/fieldReports.js';
@@ -9,12 +10,14 @@ import {Icon, Art} from './ui.jsx';
 export function Toasts(){
   const toasts = useGame(s=>s.toasts);
   return <div className="toasts" role="status" aria-live="polite">
-    {toasts.map(t=><Toast key={t.id} t={t}/>)}
+    <AnimatePresence>{toasts.map(t=><Toast key={t.id} t={t}/>)}</AnimatePresence>
   </div>;
 }
 function Toast({t}){
   useEffect(()=>{ const h = setTimeout(()=>actions.dismissToast(t.id), 4600); return ()=>clearTimeout(h); }, [t.id]);
-  return <div className="toast"><span className="ticon"><Icon name={t.icon}/></span><div><b>{t.title}</b>{t.text && <p>{t.text}</p>}</div></div>;
+  const reduce = useReducedMotion(), x = reduce ? 0 : 40;
+  return <m.div className="toast" initial={{opacity:0, x}} animate={{opacity:1, x:0}} exit={{opacity:0, x}} transition={{type:'spring', stiffness:420, damping:32}}>
+    <span className="ticon"><Icon name={t.icon}/></span><div><b>{t.title}</b>{t.text && <p>{t.text}</p>}</div></m.div>;
 }
 
 export function Popups(){
@@ -39,14 +42,17 @@ export function Modal(){
     const k = e=>{ if(e.key==='Escape') M.type==='compl' ? actions.complContinue() : actions.closeModal(); };
     document.addEventListener('keydown', k); return ()=>document.removeEventListener('keydown', k);
   }, [M]);
-  if(!M) return null;
+  const reduce = useReducedMotion();
   let body = null, cls = '';
-  if(M.type==='compl') { body = <Complication M={M}/>; cls = 'encounter'; }
-  else if(M.type==='levelup') { body = <LevelUp M={M}/>; cls = 'encounter levelup'; }
-  else if(M.type==='report') { body = <ReportCard id={M.id} onClose={actions.closeModal}/>; cls = 'reportmodal'; }
-  return <div className="modal">
-    <div className={'dispatch ' + cls} ref={card} role="dialog" aria-modal="true" aria-labelledby="dlgTitle">{body}</div>
-  </div>;
+  if(M && M.type==='compl') { body = <Complication M={M}/>; cls = 'encounter'; }
+  else if(M && M.type==='levelup') { body = <LevelUp M={M}/>; cls = 'encounter levelup'; }
+  else if(M && M.type==='report') { body = <ReportCard id={M.id} onClose={actions.closeModal}/>; cls = 'reportmodal'; }
+  const dy = reduce ? 0 : 24;
+  return <AnimatePresence>{M && <m.div key="modal" className="modal" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration: reduce ? 0 : .18}}>
+    <m.div className={'dispatch ' + cls} ref={card} role="dialog" aria-modal="true" aria-labelledby="dlgTitle"
+      initial={{opacity:0, y:dy, scale:reduce?1:.96}} animate={{opacity:1, y:0, scale:1}} exit={{opacity:0, y:dy/2, scale:reduce?1:.98}}
+      transition={{type:'spring', stiffness:380, damping:30}}>{body}</m.div>
+  </m.div>}</AnimatePresence>;
 }
 
 function Complication({M}){

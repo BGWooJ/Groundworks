@@ -1,4 +1,5 @@
 import {useEffect, useRef} from 'react';
+import {LazyMotion, MotionConfig} from 'motion/react';
 import {useGame, actions, getState, activity, touch} from './game/store.js';
 import Topbar from './components/Topbar.jsx';
 import {Toasts, Popups, Modal} from './components/Feedback.jsx';
@@ -11,6 +12,8 @@ import Step from './views/Step.jsx';
 import Finished, {Export} from './views/Finished.jsx';
 import Character from './views/Character.jsx';
 import Library from './views/Library.jsx';
+
+const loadMotion = ()=>import('./motionFeatures.js').then(mod=>mod.default);
 
 const VIEWS = {home:Home, role:Role, 'own-setup':OwnSetup, terrain:Terrain, reveal:Reveal, pick:Pick, map:MapView,
   step:Step, finished:Finished, export:Export, character:Character, library:Library};
@@ -45,10 +48,10 @@ export default function App(){
     return ()=>{ clearInterval(t); evs.forEach(e=>window.removeEventListener(e, touch)); document.removeEventListener('keydown', esc); };
   }, []);
 
-  return <div className={'app v-' + view}>
+  return <MotionConfig reducedMotion="user"><LazyMotion features={loadMotion} strict><div className={'app v-' + view}>
     <a className="skip" href="#main">Skip to content</a>
     <Topbar/>
     <main className={view==='home' ? 'main home' : 'main'} id="main"><View/></main>
     <Toasts/><Popups/><Modal/>
-  </div>;
+  </div></LazyMotion></MotionConfig>;
 }

@@ -109,6 +109,9 @@ LPP Plus, Copilot GCC, Copilot Studio, CodeHelper, No new tool) in `src/engine/t
 | `src/game/rpg.js` | Lenses, ranks, XP, standing and mastery |
 | `src/game/store.js` | Game state and every action; the journal in local storage |
 | `src/audio/sound.js` | Optional synthesised sound |
+| `src/motionFeatures.js` | Animation features for Motion, loaded after first paint |
+| `scripts/` | Content check, engine audit and fixture regeneration |
+| `docs/` | Review findings |
 | `src/art/` | Line icons and the illustration set (13 departments, 12 kinds of work, 3 autonomy levels, 4 lens portraits) |
 | `src/views/`, `src/components/` | Screens and shared UI |
 | `src/styles/` | Tokens and styles |
@@ -130,14 +133,22 @@ LPP Plus, Copilot GCC, Copilot Studio, CodeHelper, No new tool) in `src/engine/t
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # golden engine tests and content tests
+npm test           # golden, ledger and exhaustive engine tests, and content tests
 npm run check      # content check with the verdict spread
+npm run audit      # exhaustive engine audit: verdicts, ties, overlaps, coverage, content integrity
+npm run golden     # regenerate the pinned fixture after a deliberate scoring change
 npm run build      # static site in dist/
 ```
 
-`tests/fixtures/golden-v4.json` was produced by running `tests/probe.js` against the v4 scripts
-before the rewrite: every Meridian step under every tool context, and 4,000 sampled answer
-combinations. The test fails if the engine decides anything differently.
+The decision engine is pinned three ways. `tests/fixtures/golden-current.json` holds today's
+behaviour (every Meridian step under every tool context, plus 4,000 sampled combinations).
+`tests/engine.exhaustive.test.js` checks properties over the whole input space instead of a sample.
+`tests/engine.ledger.test.js` compares every state with a frozen copy of the v4 scoring
+(`tests/legacy/tools-v4.js`) and allows only the differences listed in it. To change scoring on
+purpose: change `tools.js`, add the change to the ledger, then run `npm run golden`.
+
+`docs/review-v6.md` records the v6 review: the engine audit, what was fixed, and the open design
+questions.
 
 The workflow in `.github/workflows/deploy.yml` tests, builds and publishes `dist/` to GitHub
 Pages on every push to `main`. In the repository settings, set **Pages > Source** to **GitHub

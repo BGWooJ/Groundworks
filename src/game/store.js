@@ -9,20 +9,21 @@
 import {produce} from 'immer';
 import {useSyncExternalStore} from 'react';
 import {flushSync} from 'react-dom';
-import {EVENT_POOL, MARKS} from '../content/story.js';
+import {EVENT_POOL, MARKS, COMPLICATION_SLOTS} from '../content/story.js';
 import {V5_EVENTS} from '../content/campaign.js';
 import {getExpedition} from '../content/expeditions.js';
 import {expertBand, fieldVerdict, verdictOf} from '../engine/engine.js';
 import {reportFor, reportById} from '../content/fieldReports.js';
 import {NEW_FUNCTIONS} from '../content/districts.js';
+import {FUNCTIONS} from '../content/meridian.js';
 import {XP, rankOf, blankStats, applyStats, roleOf} from './rpg.js';
 import {QUESTIONS, SCORED, answered, stepDone, nextUnanswered, markOf, readSteps, nextOpenIndex, stepEval,
-  familyOfCap, whoName, teamOf, shuffle, buildExport, lppPrompt, csvOf, slug} from './flow.js';
+  familyOfCap, whoName, teamOf, shuffle, buildExport, lppPrompt, csvOf, slug, heatOf} from './flow.js';
 import {play, setSound} from '../audio/sound.js';
 
 /* ---------- persistence ---------- */
 const JKEY = 'gw_journal_v4', OLD_KEYS = ['gw_journal_v1'], SKEY = 'gw_settings_v5', GKEY = 'gw_guide';
-export function blankProfile(){ return {role:null, xp:0, stats:blankStats(), skills:{}, families:{}, codex:{}, exported:{}, walks:0, complications:0, strong:0}; }
+export function blankProfile(){ return {role:null, xp:0, stats:blankStats(), skills:{}, families:{}, codex:{}, exported:{}, walks:0, complications:0, strong:0, seen:{}}; }
 export function blankJournal(){ return {marks:{}, flagships:[], walks:[], maps:{}, profile:blankProfile()}; }
 function read(key){ try{ return localStorage.getItem(key); }catch(e){ return null; } }
 function write(key, v){ try{ localStorage.setItem(key, v); }catch(e){ /* private mode: play on without saving */ } }
@@ -46,7 +47,7 @@ export const ALL_MARKS = MARKS.concat([
 ]);
 const NEW_FN_IDS = NEW_FUNCTIONS.map(f=>f.id);
 /* Complications: one part way through a walk, one before the finished map. */
-const SLOTS = [['trail','sponsor'], ['data','team','metric']];
+const SLOTS = COMPLICATION_SLOTS;
 export const ALL_EVENTS = EVENT_POOL.concat(V5_EVENTS);
 
 export function fresh(guide){
@@ -151,6 +152,17 @@ function openStepIn(d, i){
 }
 function resetTo(d, patch){ const g = d.S.guide; d.S = Object.assign(fresh(g), patch || {}); }
 
+/* The survey opens the department with the strongest evidence the first time a player sees it, once,
+   so the open-in-place pattern is shown rather than discovered. The strongest one, not the first in the
+   list, so someone who heads straight for the top card is not closing it. */
+function openSurvey(d){
+  resetTo(d, {mode:'guided', view:'terrain'});
+  if(!d.J.profile.seen.terrain){
+    d.J.profile.seen.terrain = true;
+    d.S.viewFn = FUNCTIONS.reduce((best, f)=> heatOf(f) > heatOf(best) ? f : best, FUNCTIONS[0]).id;
+  }
+}
+
 /* ---------- home, roles, journal ---------- */
 export const actions = {
   home(){ navigate(d=>{ resetTo(d); }); },
@@ -162,7 +174,7 @@ export const actions = {
       d.J.profile.role = id; sfx(d, 'select');
       const r = roleOf(id); if(r) toast(d, `Lens: ${r.name}`, r.perk, 'user');
       const next = d.S.next; d.S.next = null;
-      if(next==='guided'){ resetTo(d, {mode:'guided', view:'terrain'}); }
+      if(next==='guided'){ openSurvey(d); }
       else if(next==='own'){ actions._ownInit(d); }
       else if(first) d.S.view = 'home';
       else d.S.view = d.S.prevView || 'character';
@@ -179,7 +191,7 @@ export const actions = {
   /* ---------- Meridian walk ---------- */
   startGuided(){
     if(!state.J.profile.role) return actions.askRole('guided');
-    navigate(d=>{ resetTo(d, {mode:'guided', view:'terrain'}); sfx(d, 'page'); });
+    navigate(d=>{ openSurvey(d); sfx(d, 'page'); });
   },
   viewFn(id){ update(d=>{ d.S.viewFn = d.S.viewFn===id ? null : id; sfx(d, 'tap'); }); },
   toggleShortlist(pid){
