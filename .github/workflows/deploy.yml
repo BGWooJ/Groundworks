@@ -9,6 +9,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: read
 
 concurrency:
   group: pages
@@ -38,5 +39,20 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # While Settings > Pages > Source is "Deploy from a branch", every push also publishes the
+      # unbuilt repository, which is a blank page. Wait for that to finish so the built site lands
+      # last. Once Source is "GitHub Actions" there is nothing to wait for and this ends at once.
+      - name: Wait for any branch publish of this commit
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 36); do
+            busy=$(gh api "repos/${{ github.repository }}/actions/runs?head_sha=${{ github.sha }}&per_page=50" \
+              --jq '[.workflow_runs[] | select(.path == "dynamic/pages/pages-build-deployment" and .status != "completed")] | length' || echo 0)
+            if [ "$busy" = "0" ]; then exit 0; fi
+            echo "Branch publish still running; waiting so the built site is published last."
+            sleep 10
+          done
       - id: deployment
         uses: actions/deploy-pages@v4

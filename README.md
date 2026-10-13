@@ -171,7 +171,9 @@ questions.
 
 The workflow in `.github/workflows/deploy.yml` tests, builds and publishes `dist/` to GitHub
 Pages on every push to `main`. In the repository settings, set **Pages > Source** to **GitHub
-Actions**.
+Actions**. While it is still "Deploy from a branch", GitHub also publishes the unbuilt repository on
+every push, which is a blank page; the workflow waits for that to finish so the built site is published
+last, and the page explains the setting if it is ever served unbuilt.
 
 Marks, walks, saved maps and progress are kept in the browser's local storage under the v4 key,
 so v4 maps and marks carry over. "Clear my results" on the home screen removes them after a
