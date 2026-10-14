@@ -4,6 +4,7 @@ import {getExpedition} from '../content/expeditions.js';
 import {DESTINATIONS, destOf, stepsLabel} from '../engine/tools.js';
 import {VERDICTS, numbersOf} from '../engine/engine.js';
 import {CHARTER} from '../content/campaign.js';
+import {areaOfProcess} from '../content/areas.js';
 import {stepDone, stepEval, nextOpenIndex, readSteps, headingFor, splitVolume, startedReading, round, findProcessMeta, optName} from '../game/flow.js';
 import {Icon, Art, Chip, Emblem, Emph, Term} from '../components/ui.jsx';
 
@@ -97,7 +98,13 @@ export default function MapView(){
   const exp = S.mode==='guided' ? getExpedition(S.procId) : null;
   const n = S.steps.length, next = nextOpenIndex(S);
   const org = S.mode==='guided' ? exp.fn : S.own.org;
+  const area = exp ? areaOfProcess(exp.id) : null;
   return <>
+    {exp && area && <nav className="crumbs" aria-label="Where this process sits in Meridian">
+      <button className="crumb" onClick={()=>actions.worldAt(0)}><Icon name="map"/>Meridian</button><Icon name="chev" className="crumb-sep"/>
+      <button className="crumb" onClick={()=>actions.worldAt(1, area.fnId)}>{exp.fn}</button><Icon name="chev" className="crumb-sep"/>
+      <button className="crumb" onClick={()=>actions.worldAt(2, area.fnId, area.id)}>{area.name}</button><Icon name="chev" className="crumb-sep"/>
+      <span className="crumb on" aria-current="location">{exp.name}</span></nav>}
     <header className="scene withill"><div className="sh"><p className="kicker">{org || 'Your process'}</p><h1>Where would an LLM earn its keep?</h1>
       <p className="lede">{n} steps, in the order the work happens. Read each one, starting with the highlighted step.{' '}<Term id="llm"/></p></div>
       {exp && <div className="hill"><Art kind="dept" id={exp.fnId}/></div>}</header>

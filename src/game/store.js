@@ -43,7 +43,7 @@ export const ALL_EVENTS = EVENT_POOL.concat(V5_EVENTS);
 export function fresh(guide){
   return {
     mode:null, view:'home', next:null, guide:guide || read(GKEY) || 'stall',
-    shortlist:[], viewFn:null, procId:null,
+    world:{level:0, fnId:null, areaId:null, list:false, dir:1, origins:{}, hint:false}, procId:null,
     own:null, steps:[], ans:{}, cur:0, q:0,
     dug:{}, compl:{fired:[], answers:[]}, modal:null,
     whatif:{double:false, digital:false, devs:false},
@@ -187,15 +187,10 @@ function openStepIn(d, i){
 }
 function resetTo(d, patch){ const g = d.S.guide; d.S = Object.assign(fresh(g), patch || {}); }
 
-/* The survey opens the department with the strongest evidence the first time a player sees it, once,
-   so the open-in-place pattern is shown rather than discovered. The strongest one, not the first in the
-   list, so someone who heads straight for the top card is not closing it. */
+/* v8: the survey is the world map. The first visit shows how to move around it, once. */
 function openSurvey(d){
   resetTo(d, {mode:'guided', view:'terrain'});
-  if(!d.J.profile.seen.terrain){
-    d.J.profile.seen.terrain = true;
-    d.S.viewFn = FUNCTIONS.reduce((best, f)=> heatOf(f) > heatOf(best) ? f : best, FUNCTIONS[0]).id;
-  }
+  if(!d.J.profile.seen.world){ d.J.profile.seen.world = true; d.S.world.hint = true; }
 }
 
 /* ---------- home, roles, journal ---------- */
@@ -262,19 +257,33 @@ export const actions = {
     if(!state.J.profile.role) return actions.askRole('guided');
     navigate(d=>{ openSurvey(d); sfx(d, 'page'); });
   },
-  viewFn(id){ update(d=>{ d.S.viewFn = d.S.viewFn===id ? null : id; sfx(d, 'tap'); }); },
-  toggleShortlist(pid){
-    update(d=>{ const sl = d.S.shortlist, i = sl.indexOf(pid);
-      if(i>=0){ sl.splice(i,1); sfx(d, 'unflag'); } else if(sl.length<3){ sl.push(pid); sfx(d, 'flag'); } });
+  /* v8: moving through the world. origin is where the player pressed, as a share of the stage, so the
+     next level grows out of that spot and shrinks back into it. */
+  worldEnter(fnId, origin){ update(d=>{ const w = d.S.world; w.level = 1; w.fnId = fnId; w.areaId = null; w.dir = 1; w.origins[1] = origin || null; w.hint = false; sfx(d, 'page'); }); },
+  worldArea(areaId, origin){ update(d=>{ const w = d.S.world; w.level = 2; w.areaId = areaId; w.dir = 1; w.origins[2] = origin || null; sfx(d, 'page'); }); },
+  worldUp(level){ update(d=>{ const w = d.S.world; if(level>=w.level) return; w.dir = -1; w.from = w.level; w.level = level; if(level<2) w.areaId = null; if(level<1) w.fnId = null; sfx(d, 'tap'); }); },
+  worldList(on){ update(d=>{ d.S.world.list = !!on; d.S.world.hint = false; sfx(d, 'tap'); }); },
+  worldHintDone(){ update(d=>{ d.S.world.hint = false; }); },
+  /* The route: up to three processes to read one after another. Kept with your progress. */
+  routeToggle(pid){
+    update(d=>{ const r = d.J.route, i = r.indexOf(pid);
+      if(i>=0){ r.splice(i,1); sfx(d, 'unflag'); } else if(r.length<3){ r.push(pid); sfx(d, 'flag'); } });
   },
+  toggleShortlist(pid){ actions.routeToggle(pid); },
   toReveal(){ navigate(d=>{ d.S.view = 'reveal'; sfx(d, 'page'); }); },
+  /* Back to the map where you left it (mode and world are kept: only the screen changes). */
+  toWorld(){ navigate(d=>{ d.S.mode = 'guided'; d.S.view = 'terrain'; }); },
+  /* From a walk back to the place in the world it belongs to. */
+  worldAt(level, fnId, areaId){ navigate(d=>{ resetTo(d, {mode:'guided', view:'terrain'}); Object.assign(d.S.world, {level, fnId:fnId||null, areaId:areaId||null, dir:-1}); }); },
   toPick(){ navigate(d=>{ d.S.view = 'pick'; }); },
   pickProc(pid){
     navigate(d=>{
       const saved = d.J.progress[pid];
       if(saved){ restoreWalk(d, pid, saved); d.S.resumed = true; sfx(d, 'page'); return; }
-      const e = getExpedition(pid), S = d.S;
-      S.mode = 'guided'; S.procId = pid; S.steps = e.steps; S.ans = {}; S.dug = {}; S.view = 'map';
+      // a fresh walk: nothing carries over from the screen it was started from (v8: the finished map
+      // of the last process on a route, the world map, or the route itself)
+      const e = getExpedition(pid); resetTo(d, {mode:'guided', view:'map'}); const S = d.S;
+      S.procId = pid; S.steps = e.steps;
       S.walk = {start:Object.assign({}, d.J.profile.stats), stats:Object.assign({}, d.J.profile.stats), xp:0, reports:[], marks:[], ranks:[]};
       sfx(d, 'page');
     });
@@ -526,6 +535,7 @@ function finishGuided(d){
   d.J.walks.unshift({proc:exp.name, summary:`Matched the Guide’s LLM call on ${agree} of ${steps.length} steps.`, xp:w.xp, when:Date.now(),
     procId:S.procId, ans:S.ans, dug:S.dug, walk:w, compl:{fired:S.compl.fired, answers:S.compl.answers, flags:S.compl.flags || []}});
   delete d.J.progress[S.procId];
+  d.J.route = d.J.route.filter(pid=>pid!==S.procId);   // read: the next one on the route waits
   d.J.walks = d.J.walks.slice(0,8);
 }
 

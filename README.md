@@ -40,7 +40,8 @@ decorates is left out.
 ## Two ways in
 
 **Explore Meridian.** A made-up reserve bank with 13 divisions and 38 walkable processes
-(126 steps). Survey the Bank, shortlist up to three processes, pick one, and read it step by step.
+(126 steps), drawn as a map you move around (see **The world** below). Go inside a division, then one
+of its work areas, and walk a process or pin up to three to your route; then read it step by step.
 After each read you compare with the Guide's view: which answers match, the verdict, notes from the
 team, and often a landmark case from the wider world. Two complications per walk
 test your judgment under pressure.
@@ -65,6 +66,27 @@ can see every finding.
 
 Complications are drawn with a preference for your lens, so a sponsor meets "gamify everything"
 and "show me the return" more often, and a builder meets "build our own" and "write access".
+
+## The world
+
+Meridian is an island of five regions, with each of the 13 divisions a landmark on it
+(`src/views/World.jsx`, `src/content/world.js`).
+
+- **Moving around:** drag, scroll or pinch, or use the arrow keys and plus and minus. A glow marks
+  where the evidence of repeated, measurable work is strongest. Pointing at a landmark shows its card.
+- **Three levels, each opening out of the one before:** Meridian, a division (its work areas), and a
+  work area (its processes). Each level grows out of the spot you pressed and shrinks back into it.
+  The breadcrumb, Back or Escape go up a level. With reduced motion turned on, levels fade instead.
+- **Work areas** (`src/content/areas.js`) group each division's processes the way its people would.
+  Every process belongs to exactly one, and the content check enforces it.
+- **The route** replaces the shortlist. Pin up to three processes from any level, and the route is kept
+  with your progress. **How do they rank?** shows where your picks sit among every process; ratings
+  stay hidden until then, so judging the evidence is still part of the game. **Read my route** lists
+  them, and a finished walk offers the next one.
+- **List view:** the same levels as nested lists, one toggle away, for keyboards, screen readers and
+  small screens.
+- **Built with:** SVG and d3-zoom, with Motion for the zooms. No 3D: a flat map stays sharp at every
+  zoom, keeps every division a real button, and runs smoothly on modest laptops and phones.
 
 ## The RPG layer
 
@@ -159,6 +181,8 @@ LPP Plus, Copilot GCC, Copilot Studio, CodeHelper, No new tool) in `src/engine/t
 | `src/game/storage.js` | v8: the one place the game saves and loads: this browser, save links and save files |
 | `src/components/SaveDialogs.jsx` | v8: saving and opening progress, and the check before replacing it |
 | `src/views/Intro.jsx`, `src/components/Stages.jsx`, `src/content/glossary.js` | v8: the introduction, "you are here", and plain-language terms |
+| `src/views/World.jsx`, `src/content/world.js`, `src/content/areas.js` | v8: the world map, its geography, and the work areas |
+| `src/views/Survey.jsx` | The ranking of every process ("How do they rank?") and your route |
 | `src/audio/sound.js` | Optional synthesised sound |
 | `src/motionFeatures.js` | Animation features for Motion, loaded after first paint |
 | `scripts/` | Content check, engine audit and fixture regeneration |
@@ -189,7 +213,7 @@ npm run check      # content check with the verdict spread
 npm run audit      # exhaustive engine audit: verdicts, ties, overlaps, coverage, content integrity
 node scripts/audit-options.mjs   # does every answer matter, do questions make sense, are complications a real choice
 node scripts/browser-check.cjs   # the v7 fixes in Chromium (needs Playwright and a running preview)
-node scripts/browser-check-v8.cjs   # v8: introduction, terms, stages, new words; save links and files across browsers
+node scripts/browser-check-v8.cjs   # v8: introduction, terms, stages, new words; save links and files; the world map
 npm run golden     # regenerate the pinned fixture after a deliberate scoring change
 npm run build      # static site in dist/
 ```

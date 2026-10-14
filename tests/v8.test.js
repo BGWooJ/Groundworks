@@ -160,3 +160,47 @@ describe('opening saved progress', ()=>{
     expect(store.getState().J.profile.lastSaveKind).toBe('link');
   });
 });
+
+/* ---------- phase 3: the world ---------- */
+describe('the world', ()=>{
+  it('places every process in exactly one work area, and every division on the map', async ()=>{
+    memoryStorage();
+    const {checkAreas, areasOf, areaOfProcess} = await import('../src/content/areas.js');
+    const {LANDMARKS} = await import('../src/content/world.js');
+    const {FUNCTIONS} = await import('../src/content/meridian.js');
+    expect(checkAreas()).toEqual([]);
+    FUNCTIONS.forEach(f=>{ expect(LANDMARKS[f.id]).toBeTruthy(); expect(areasOf(f.id).length).toBeGreaterThan(0); });
+    expect(areaOfProcess('briefing').id).toBe('econ-brief');
+  });
+  it('goes in and out a level at a time, and remembers where each level was entered', async ()=>{
+    const {store} = await freshStore();
+    const {actions, getState} = store;
+    actions.chooseRole('builder'); actions.startGuided();
+    expect(getState().S).toMatchObject({view:'terrain', world:{level:0, hint:true}});
+    actions.worldEnter('econ', {x:.3, y:.4});
+    expect(getState().S.world).toMatchObject({level:1, fnId:'econ', dir:1, hint:false});
+    actions.worldArea('econ-brief', {x:.6, y:.5});
+    expect(getState().S.world).toMatchObject({level:2, areaId:'econ-brief'});
+    expect(getState().S.world.origins).toEqual({1:{x:.3, y:.4}, 2:{x:.6, y:.5}});
+    actions.worldUp(0);
+    expect(getState().S.world).toMatchObject({level:0, fnId:null, areaId:null, dir:-1, from:2});
+  });
+  it('keeps a route of at most three, which a finished walk leaves', async ()=>{
+    const {store} = await freshStore();
+    const {actions, getState} = store;
+    ['ap','benefitsq','ratevote','helpdesk'].forEach(p=>actions.routeToggle(p));
+    expect(getState().J.route).toEqual(['ap','benefitsq','ratevote']);
+    actions.routeToggle('benefitsq');
+    expect(getState().J.route).toEqual(['ap','ratevote']);
+    const st = await import('../src/game/storage.js');
+    expect(st.normalJournal({profile:{}, route:['ap', 7, 'x', 'y', 'z']}).route).toEqual(['ap','x','y']);
+  });
+  it('starts every walk from a clean slate', async ()=>{
+    const {store} = await freshStore();
+    const {actions, getState} = store;
+    actions.chooseRole('builder'); actions.startGuided(); actions.pickProc('ap');
+    store.update(d=>{ d.S.compl = {fired:['x'], answers:[1]}; d.S.finishedOnce = true; });
+    actions.pickProc('ratevote');
+    expect(getState().S).toMatchObject({procId:'ratevote', view:'map', finishedOnce:false, compl:{fired:[], answers:[]}});
+  });
+});

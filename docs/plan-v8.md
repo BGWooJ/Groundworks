@@ -191,3 +191,18 @@ first mention of the Guide, and the lens line on both lens screens.
   desktop the top-bar buttons show icons only. The process name shortens before anything wraps.
 - Saves are treated as untrusted: keys that could change how objects behave are dropped, damaged
   entries are removed, and anything that unpacks to more than 4 MB is refused.
+
+**Phase 3, the world map: done.** Built in SVG with d3-zoom and Motion. Three.js was offered and not
+needed: a flat map is sharper at every zoom, keeps every division a real button for keyboards and
+screen readers, and stays smooth on modest hardware. Decisions and fixes along the way:
+- **Ratings:** in a work area, processes show their description and step count but not their
+  hotspot rating, so judging the evidence stays part of the game. "How do they rank?" on the route
+  shows the ranking, as the full survey did.
+- **Screen sizes:** a wide screen shows the whole island. A phone opens zoomed to its height, centred
+  on the mission, with labels at a readable size.
+- **Reduced motion:** levels only fade, with no scaling at all.
+- **The route:** kept with your progress, and in save links. A walked process leaves the route, and
+  the finished map offers the next one.
+- **Fixed:** starting a walk used to carry over state from the screen it was started from, such as
+  which complications had already fired. Every walk now starts clean.
+- **Economists' Forecasting area** has no processes yet and is hidden until phase 4 fills it.

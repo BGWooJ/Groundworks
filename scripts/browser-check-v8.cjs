@@ -1,5 +1,5 @@
 // Browser check for v8: phase 1 (the introduction, plain-language terms, "you are here", the new words)
-// and phase 2 (save links and files, opened in other browsers).
+// and phase 2 (save links and files, opened in other browsers), and phase 3 (the world map).
 // Needs Playwright and a running preview:  npm run build && npx vite preview --port 4173
 //   then  node scripts/browser-check-v8.cjs
 const {chromium} = require(process.env.PLAYWRIGHT_PATH || 'playwright');
@@ -42,18 +42,19 @@ const stage = p=>p.evaluate(()=>{ const c = document.querySelector('.stages [ari
   await p.click('.iactions >> text=Explore Meridian'); await wait(500);
   g = await p.evaluate(()=>({h1:document.querySelector('h1').textContent, lede:document.querySelector('.lede').textContent}));
   ok('lens: chosen after the introduction, and says it does not change difficulty', g.h1==='Choose your lens' && /not how hard it is/.test(g.lede), g.h1);
-  await p.click('.rolecard >> nth=0'); await p.waitForSelector('.station'); await wait(900);
+  await p.click('.rolecard >> nth=0'); await p.waitForSelector('.wmap svg'); await wait(900);
   g = await p.evaluate(()=>({h1:document.querySelector('h1').textContent, lede:document.querySelector('.lede').textContent}));
   ok('survey: the heading is "Where could AI help most?" and keeps "no AI" a real answer', g.h1==='Where could AI help most?' && /need no AI/.test(g.lede), JSON.stringify(g));
   ok('stages: the survey is stage 1, Explore', (await stage(p))==='Explore', await stage(p));
   ok('words: no old wording on the survey', !(await oldWords(p)), await oldWords(p));
   await p.screenshot({path:OUT+'/04-survey.png'});
-  await p.click('.station >> text=Economists'); await wait(900);
-  await p.click('.pick >> nth=0'); await wait(400);
-  await p.click('.picknext .btn'); await wait(700);
-  ok('stages: the full survey is stage 2, Choose', (await stage(p))==='Choose', await stage(p));
-  ok('words: no old wording on the full survey', !(await oldWords(p)), await oldWords(p));
-  await p.click('text=Choose the process to walk'); await wait(600);
+  await p.click('.lm[aria-label^="Economists"]'); await wait(900);
+  ok('words: no old wording inside a division', !(await oldWords(p)), await oldWords(p));
+  await p.click('.zone:has-text("Policy meeting briefings")'); await wait(900);
+  ok('stages: a work area\'s processes are stage 2, Choose', (await stage(p))==='Choose', await stage(p));
+  ok('words: no old wording in a work area', !(await oldWords(p)), await oldWords(p));
+  await p.click('.site:has-text("Pre-meeting briefing cycle") .pin'); await wait(300);
+  await p.click('.routebar >> text=Read my route'); await wait(600);
   g = await p.evaluate(()=>!!document.querySelector('.lede .termbtn'));
   ok('terms: the pick screen explains who the Guide is', g);
   await p.click('.lede .termbtn'); await wait(200);
@@ -112,7 +113,7 @@ const stage = p=>p.evaluate(()=>{ const c = document.querySelector('.stages [ari
   ok('phone: the LLM note stays inside the screen', g.l>=0 && g.r<=390 && g.sw<=390, JSON.stringify(g));
   await q.screenshot({path:OUT+'/10-phone-term.png'});
   await q.click('h1'); await q.click('text=Next'); await wait(400); await q.click('.iactions >> text=Explore Meridian'); await wait(400);
-  await q.click('.rolecard >> nth=1'); await q.waitForSelector('.station'); await wait(900);
+  await q.click('.rolecard >> nth=1'); await q.waitForSelector('.wmap svg'); await wait(900);
   g = await q.evaluate(()=>({now:(document.querySelector('.st-now')||{}).textContent, labels:[...document.querySelectorAll('.stages .st-l')].filter(x=>getComputedStyle(x).display!=='none').map(x=>x.textContent), sw:document.documentElement.scrollWidth}));
   ok('phone: the stage strip is one compact line', g.now==='Stage 1 of 5' && g.labels.length===1 && g.sw<=390, JSON.stringify(g));
   await q.screenshot({path:OUT+'/11-phone-survey.png'});
@@ -126,10 +127,9 @@ const stage = p=>p.evaluate(()=>{ const c = document.querySelector('.stages [ari
   const fresh = async (vp)=>{ const c = await b.newContext({viewport:vp || {width:1360,height:800}, acceptDownloads:true}); const pg = await c.newPage();
     pg.on('pageerror', e=>errors.push('save: '+e.message)); return {c, pg}; };
   const walkOneStep = async pg=>{
-    await pg.click('.startcard >> nth=0'); await pg.click('.rolecard >> nth=1'); await pg.waitForSelector('.station'); await wait(900);
-    await pg.click('.station >> text=Economists'); await wait(900); await pg.click('.pick >> nth=0'); await wait(300);
-    await pg.click('.picknext .btn'); await wait(500); await pg.click('text=Choose the process to walk'); await wait(400);
-    await pg.click('.routecard'); await pg.waitForSelector('button.mcard.cur'); await pg.click('button.mcard.cur'); await pg.waitForSelector('.question .token');
+    await pg.click('.startcard >> nth=0'); await pg.click('.rolecard >> nth=1'); await pg.waitForSelector('.wmap svg'); await wait(900);
+    await pg.click('.lm[aria-label^="Economists"]'); await wait(900); await pg.click('.zone:has-text("Policy meeting briefings")'); await wait(900);
+    await pg.click('.site:has-text("Pre-meeting briefing cycle") >> text=Walk this process'); await pg.waitForSelector('button.mcard.cur'); await pg.click('button.mcard.cur'); await pg.waitForSelector('.question .token');
     for(let i=0;i<14;i++){ const ts = await pg.$$('.question .token'); if(!ts.length) break; await ts[0].click(); await wait(450); }
     await pg.click('[data-focus="reveal"]'); await wait(2900);
   };
@@ -212,6 +212,108 @@ const stage = p=>p.evaluate(()=>{ const c = document.querySelector('.stages [ari
   ok('phone: the save dialog fits, with a full-width copy button', g.sw<=390 && g.btn>250, JSON.stringify(g));
   await pb.screenshot({path:OUT+'/25-phone-save.png'});
   await A.c.close(); await B.c.close(); await C.c.close();
+
+  /* ================= phase 3: the world ================= */
+  const W = await fresh({width:1360, height:860}); const pw = W.pg;
+  await pw.goto(BASE); await wait(600); await pw.click('text=Skip the introduction');
+  await pw.click('.startcard >> nth=0'); await pw.click('.rolecard >> nth=0'); await pw.waitForSelector('.wmap svg'); await wait(900);
+  g = await pw.evaluate(()=>{ const m = document.querySelector('.wmap').getBoundingClientRect(), rings = [...document.querySelectorAll('.lm-ring')].map(r=>r.getBoundingClientRect());
+    return {landmarks:rings.length, regions:document.querySelectorAll('.w-region').length, inside:rings.filter(r=>r.left>=m.left && r.right<=m.right && r.top>=m.top && r.bottom<=m.bottom).length, hint:!!document.querySelector('.whint'),
+      routeTop:Math.round(document.querySelector('.routebar').getBoundingClientRect().top), mapBottom:Math.round(m.bottom)}; });
+  ok('world: thirteen divisions in five regions, all on screen on a desktop', g.landmarks===13 && g.regions===5 && g.inside===13, JSON.stringify(g));
+  ok('world: the first visit shows how to move around', g.hint);
+  ok('world: the map clears the route bar', g.mapBottom<=g.routeTop, JSON.stringify(g));
+  await pw.hover('.lm[aria-label^="Benefits"]'); await wait(250);
+  g = await pw.evaluate(()=>(document.querySelector('.lmcard b')||{}).textContent);
+  ok('world: pointing at a division shows its card', g==='Benefits organization', g);
+  const scaleOf = ()=>pw.evaluate(()=>{ const t = document.querySelector('.wmap svg > g').getAttribute('transform') || ''; const m = /scale\(([\d.]+)\)/.exec(t); return m ? +m[1] : 1; });
+  const k0 = await scaleOf();
+  await pw.focus('.wmap > svg'); await pw.keyboard.press('+'); await wait(500); await pw.keyboard.press('ArrowLeft'); await wait(300);
+  const k1 = await scaleOf();
+  ok('world: the keyboard zooms and moves the map', k1>k0, `${k0} -> ${k1}`);
+  await pw.click('.wctl [aria-label="Show all of Meridian"]'); await wait(600);
+  /* smoothness: frame gaps while entering a division */
+  await pw.evaluate(()=>{ window.__f = []; const t0 = performance.now(); const tick = t=>{ window.__f.push(t); if(t - t0 < 900) requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
+  await pw.click('.lm[aria-label^="Economists"]'); await wait(1000);
+  g = await pw.evaluate(()=>{ const f = window.__f, gaps = f.slice(1).map((t,i)=>t - f[i]); return {frames:f.length, worst:Math.round(Math.max(...gaps)), over50:gaps.filter(x=>x>50).length}; });
+  ok('motion: entering a division runs without long stalls', g.worst<120 && g.over50<=3, JSON.stringify(g));
+  g = await pw.evaluate(()=>({h1:document.querySelector('h1').textContent, focus:document.activeElement && document.activeElement.tagName, zones:document.querySelectorAll('.zone').length, crumbs:[...document.querySelectorAll('.wscene-head .crumb')].map(x=>x.textContent)}));
+  ok('world: a division opens with its work areas, and focus moves to its name', g.h1==='Economists' && g.focus==='H1' && g.zones===2, JSON.stringify(g));
+  ok('world: the breadcrumb says where you are', g.crumbs.join(' > ')==='Meridian > Economists', g.crumbs.join(' > '));
+  await pw.click('.zone:has-text("Policy meeting briefings")'); await wait(900);
+  g = await pw.evaluate(()=>({h1:document.querySelector('h1').textContent, sites:document.querySelectorAll('.site').length, rating:!!document.querySelector('.site .heatbar')}));
+  ok('world: a work area lists its processes', g.h1==='Policy meeting briefings' && g.sites===2, JSON.stringify(g));
+  ok('world: ratings stay hidden until the player has chosen', !g.rating);
+  await pw.keyboard.press('Escape'); await wait(800);
+  ok('world: Escape goes back up one level', (await pw.evaluate(()=>document.querySelector('h1').textContent))==='Economists');
+  await pw.keyboard.press('Escape'); await wait(900);
+  ok('world: and again, back to the map', !!(await pw.$('.wmap svg')));
+  /* the route */
+  const pin = async (div, area, proc)=>{ await pw.click(`.lm[aria-label^="${div}"]`); await wait(850); await pw.click(`.zone:has-text("${area}")`); await wait(850);
+    await pw.click(`.site:has-text("${proc}") .pin`); await wait(250); await pw.click('.crumbs >> text=Meridian'); await wait(900); };
+  await pin('Benefits', 'Inquiries', 'Benefits inquiries'); await pin('Finance', 'Payables', 'Supplier invoice processing'); await pin('Economists', 'Policy meeting briefings', 'The policy recommendation itself');
+  g = await pw.evaluate(()=>[...document.querySelectorAll('.rb-slot.on > span')].map(x=>x.textContent));
+  ok('route: pins from three divisions fill the route', g.length===3, g.join(' | '));
+  await pw.click('.lm[aria-label^="Enterprise IT"]'); await wait(850); await pw.click('.zone >> nth=0'); await wait(850);
+  g = await pw.evaluate(()=>{ const b = document.querySelector('.site .pin'); return {disabled:b.disabled, text:b.textContent}; });
+  ok('route: a fourth pin waits for a free place', g.disabled && /Route full/.test(g.text), JSON.stringify(g));
+  await pw.reload(); await wait(900);
+  await pw.click('.startcard >> nth=0'); await pw.waitForSelector('.wmap svg'); await wait(700);
+  g = await pw.evaluate(()=>document.querySelectorAll('.rb-slot.on').length);
+  ok('route: it is kept with your progress, through a reload', g===3, g);
+  await pw.click('.routebar >> text=How do they rank?'); await wait(700);
+  g = await pw.evaluate(()=>({h1:document.querySelector('h1').textContent, mine:document.querySelectorAll('.ladder li.mine').length}));
+  ok('route: "How do they rank?" marks your picks in the full ranking', g.h1==='How do they rank?' && g.mine===3, JSON.stringify(g));
+  await pw.click('text=Read my route'); await wait(600);
+  g = await pw.evaluate(()=>({h1:document.querySelector('h1').textContent, cards:document.querySelectorAll('.routecard').length}));
+  ok('route: "Read my route" lists the three to read', g.h1==='Your route' && g.cards===3, JSON.stringify(g));
+  await pw.click('.routecard:has-text("The policy recommendation itself")'); await pw.waitForSelector('button.mcard.cur'); await wait(500);
+  g = await pw.evaluate(()=>[...document.querySelectorAll('.crumbs .crumb')].map(x=>x.textContent).join(' > '));
+  ok('world: a process shows where it sits in Meridian', g==='Meridian > Economists > Policy meeting briefings > The policy recommendation itself', g);
+  /* walk it to the end: the next on the route waits */
+  for(let guard=0; guard<80; guard++){
+    if(await pw.$('.v-finished')) break;
+    if(await pw.$('.modal .choice')){ await pw.click('.modal .choice >> nth=0'); await wait(400); await pw.click('.modal >> text=Continue'); await wait(600); continue; }
+    if(await pw.$('.modal [data-autofocus]')){ await pw.click('.modal [data-autofocus]'); await wait(300); continue; }
+    if(await pw.$('.spot')){ /* the achievement spotlight floats; it does not block */ }
+    if(await pw.$('.v-map')){ await pw.click('button.mcard.cur'); await wait(500); continue; }
+    const tok = await pw.$('.question .token'); if(tok){ await tok.click(); await wait(420); continue; }
+    const rv = await pw.$('[data-focus="reveal"]'); if(rv){ await rv.click(); await wait(2900); await pw.click('.read .actions .btn.primary'); await wait(700); continue; }
+    break;
+  }
+  g = await pw.evaluate(()=>({finished:!!document.querySelector('.v-finished'), next:[...document.querySelectorAll('.actions .btn')].map(b=>b.textContent).find(t=>/Next on your route/.test(t)) || null}));
+  ok('route: a finished walk offers the next process on the route', g.finished && /Next on your route: (Benefits inquiries|Supplier invoice processing)/.test(g.next||''), JSON.stringify(g));
+  g = await pw.evaluate(()=>JSON.parse(localStorage.getItem('gw_journal_v4')).route);
+  ok('route: the walked process leaves the route', g.length===2 && !g.includes('ratevote'), JSON.stringify(g));
+  /* list view */
+  await pw.click('.brand'); await wait(400); await pw.click('.startcard >> nth=0'); await pw.waitForSelector('.wmap svg'); await wait(600);
+  await pw.click('.viewtoggle >> text=List'); await wait(700);
+  g = await pw.evaluate(()=>({divs:document.querySelectorAll('.wl-div').length, regions:document.querySelectorAll('.wl-region').length}));
+  ok('list: the same thirteen divisions in five regions, as lists', g.divs===13 && g.regions===5, JSON.stringify(g));
+  await pw.click('.wl-div:has-text("Bank supervision") summary'); await wait(300);
+  await pw.click('.wl-div:has-text("Bank supervision") li:has-text("Regulatory report validation") >> text=Walk this process'); await pw.waitForSelector('button.mcard.cur');
+  ok('list: a process can be walked straight from the list', (await pw.evaluate(()=>document.querySelector('.crumbs .crumb.on').textContent))==='Regulatory report validation');
+  await W.c.close();
+
+  /* reduced motion: the zoom becomes a fade */
+  const RM = await b.newContext({viewport:{width:1360,height:860}, reducedMotion:'reduce'}); const pr = await RM.newPage();
+  await pr.goto(BASE); await wait(600); await pr.click('text=Skip the introduction'); await pr.click('.startcard >> nth=0'); await pr.click('.rolecard >> nth=0'); await pr.waitForSelector('.wmap svg'); await wait(700);
+  await pr.click('.lm[aria-label^="Economists"]'); await wait(60);
+  g = await pr.evaluate(()=>[...document.querySelectorAll('.wscene')].map(x=>getComputedStyle(x).transform));
+  ok('motion: with reduced motion, levels fade without scaling', g.every(t=>t==='none' || /^matrix\(1, 0, 0, 1/.test(t)), JSON.stringify(g));
+  await RM.close();
+
+  /* phone */
+  const PH = await fresh({width:390, height:844}); const pp = PH.pg;
+  await pp.goto(BASE); await wait(600); await pp.click('text=Skip the introduction'); await pp.click('.startcard >> nth=0'); await pp.click('.rolecard >> nth=0'); await pp.waitForSelector('.wmap svg'); await wait(900);
+  g = await pp.evaluate(()=>{ const n = document.querySelector('.lm[aria-label^="Economists"] .lm-name').getBoundingClientRect(); return {labelPx:Math.round(n.height), sw:document.documentElement.scrollWidth, k:(/scale\(([\d.]+)\)/.exec(document.querySelector('.wmap svg > g').getAttribute('transform')||'')||[0,1])[1]}; });
+  ok('phone: the map opens zoomed to the screen, with readable labels', +g.k>1.5 && g.labelPx>=12 && g.sw<=390, JSON.stringify(g));
+  await pp.screenshot({path:OUT+'/40-phone-world.png'});
+  await pp.click('.lm[aria-label^="Economists"]'); await wait(900); await pp.click('.zone >> nth=0'); await wait(900);
+  g = await pp.evaluate(()=>({h1:document.querySelector('h1').textContent, sw:document.documentElement.scrollWidth}));
+  ok('phone: a division and a work area open by tapping, and fit', g.h1==='Policy meeting briefings' && g.sw<=390, JSON.stringify(g));
+  await pp.screenshot({path:OUT+'/41-phone-area.png'});
+  await PH.c.close();
 
   ok('no page errors', !errors.length, errors.join(' | '));
   console.log(R.join('\n')); console.log('screenshots in', OUT);

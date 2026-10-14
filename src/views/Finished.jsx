@@ -71,7 +71,8 @@ function Plan({S}){
 }
 
 export default function Finished(){
-  const S = useGame(s=>s.S);
+  const S = useGame(s=>s.S), route = useGame(s=>s.J.route);
+  const nextOnRoute = S.mode==='guided' && !S.reopened ? route.find(pid=>pid!==S.procId && getExpedition(pid)) : null;
   const t = finishedTitle(S), best = startStep(S);
   let start = null;
   if(best){
@@ -101,7 +102,8 @@ export default function Finished(){
     </section>}
     {!S.reopened && <KeepProgress/>}
     <div className="actions"><button className="btn primary" onClick={actions.toExport}><Icon name="download"/>Take the map further</button>
-      {S.mode==='guided' ? <button className="btn ghost" onClick={actions.startGuided}>Walk another process</button> : <button className="btn ghost" onClick={actions.toMap}>Back to the map</button>}
+      {nextOnRoute && <button className="btn brass" onClick={()=>actions.pickProc(nextOnRoute)}><Icon name="route"/>Next on your route: {getExpedition(nextOnRoute).name}</button>}
+      {S.mode==='guided' ? <button className="btn ghost" onClick={actions.startGuided}>{nextOnRoute ? 'Back to the map' : 'Walk another process'}</button> : <button className="btn ghost" onClick={actions.toMap}>Back to the map</button>}
       <button className="btn ghost" onClick={actions.home}><Icon name="home"/>Home</button></div>
   </>;
 }

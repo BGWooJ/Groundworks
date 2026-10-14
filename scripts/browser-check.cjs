@@ -1,4 +1,4 @@
-// Browser check for the v7 fixes (updated for the v8 start: the introduction and the start cards). Needs Playwright (npm i -g playwright) and a running preview:
+// Browser check for the v7 fixes (updated for v8: the introduction, the start cards and the world map). Needs Playwright (npm i -g playwright) and a running preview:
 //   npm run build && npx vite preview --port 4173   then   node scripts/browser-check.cjs
 const {chromium} = require(process.env.PLAYWRIGHT_PATH || 'playwright');
 const BASE = process.env.GROUNDWORK_URL || 'http://localhost:4173/';
@@ -13,22 +13,16 @@ async function walkStep(p){ await p.waitForSelector('.question .token'); await a
   p.on('pageerror', e=>errors.push(e.message)); p.on('console', m=>{ if(m.type()==='error') errors.push(m.text()); });
   await p.goto(BASE); await p.evaluate(()=>localStorage.clear()); await p.reload(); await wait(500);
 
-  /* ---------- 1. Shortlist choices and next step, from a cold start ---------- */
+  /* ---------- 1. (v8) The shortlist became the world map and the route; browser-check-v8.cjs checks those.
+     Here the map is only the way into a walk. ---------- */
   await p.click('text=Skip the introduction'); await wait(300);
-  await p.click('.startcard >> nth=0'); await p.click('.rolecard >> nth=2'); await p.waitForSelector('.station'); await wait(900);
-  await p.click('.station >> text=Economists'); await wait(900);
-  let g = await p.evaluate(()=>{ const pk=[...document.querySelectorAll('.pick')].map(x=>x.getBoundingClientRect()); return {vh:innerHeight, first:Math.round(pk[0].top), last:Math.round(pk[pk.length-1].bottom), n:pk.length}; });
-  ok('shortlist: all Economists choices are on screen after one click (desktop)', g.first>60 && g.last<g.vh, JSON.stringify(g));
-  await p.screenshot({path:OUT+'/1-economists.png'});
-  await p.click('.pick:has-text("Pre-meeting briefing cycle")'); await wait(900);
-  g = await p.evaluate(()=>{ const n=document.querySelector('.picknext.ready'), b=n&&n.querySelector('.btn').getBoundingClientRect(); return {state:document.querySelector('.pick.on .pick-state').textContent, next:!!n, nextVisible: b ? b.top>0 && b.bottom<innerHeight-90 : false, nb: b && Math.round(b.bottom), sticky:document.querySelector('.actions.sticky .btn').textContent}; });
-  ok('shortlist: a chosen card says so', g.state==='Shortlisted', g.state);
-  ok('shortlist: the next step appears right under the choices, on screen and clear of the footer', g.next && g.nextVisible, JSON.stringify(g));
-  ok('shortlist: the bottom bar names the next step', g.sticky==='Next: compare with the full survey', g.sticky);
-  await p.screenshot({path:OUT+'/2-shortlisted.png'});
+  await p.click('.startcard >> nth=0'); await p.click('.rolecard >> nth=2'); await p.waitForSelector('.wmap svg'); await wait(700);
+  await p.click('.lm[aria-label^="Economists"]'); await wait(900);
+  await p.click('.zone:has-text("Policy meeting briefings")'); await wait(900);
+  let g;
 
   /* ---------- 2. A walk in progress can be picked up again ---------- */
-  await p.click('.picknext .btn'); await p.click('text=Choose the process to walk'); await p.click('.routecard'); await p.waitForSelector('button.mcard.cur');
+  await p.click('.site:has-text("Pre-meeting briefing cycle") >> text=Walk this process'); await p.waitForSelector('button.mcard.cur');
   await p.click('button.mcard.cur'); await walkStep(p);
   await p.click('.brand'); await wait(600);
   g = await p.evaluate(()=>{ const r=document.querySelector('.resume-item'); const b=r&&r.getBoundingClientRect(); return {text:r&&r.textContent, top:b&&Math.round(b.top), vh:innerHeight}; });
@@ -111,12 +105,12 @@ async function walkStep(p){ await p.waitForSelector('.question .token'); await a
   g = await q.evaluate(()=>({view:document.querySelector('.app').className, h:document.querySelector('.tb-name') ? '' : '', done:document.querySelectorAll('.mcard.done').length}));
   ok('map file: opens in another browser with its answers', g.view.includes('v-map') && g.done===2, JSON.stringify(g));
 
-  /* phone: shortlist visible */
-  await q.click('.brand'); await q.click('.startcard >> nth=0'); await q.click('.rolecard >> nth=0'); await q.waitForSelector('.station'); await wait(800);
-  await q.click('.station >> text=Economists'); await wait(900);
-  g = await q.evaluate(()=>{ const pk=document.querySelector('.pick').getBoundingClientRect(); return {vh:innerHeight, top:Math.round(pk.top), bottom:Math.round(pk.bottom)}; });
-  ok('shortlist: the first choice is on screen and clear of the footer after one click (phone)', g.top>50 && g.bottom<g.vh-96, JSON.stringify(g));
-  await q.screenshot({path:OUT+'/7-phone-economists.png'});
+  /* phone: the way into a walk (v8: the world map; its layout is checked in browser-check-v8.cjs) */
+  await q.click('.brand'); await q.click('.startcard >> nth=0'); await q.click('.rolecard >> nth=0'); await q.waitForSelector('.wmap svg'); await wait(800);
+  await q.click('.viewtoggle >> text=List'); await wait(700);
+  g = await q.evaluate(()=>({divisions:document.querySelectorAll('.wl-div').length, sw:document.documentElement.scrollWidth}));
+  ok('phone: every division is reachable from the list view, and it fits', g.divisions===13 && g.sw<=390, JSON.stringify(g));
+  await q.screenshot({path:OUT+'/7-phone-list.png'});
   ok('no page errors', errors.length===0, errors.join(' | '));
   console.log(R.join('\n'));
   await b.close();
