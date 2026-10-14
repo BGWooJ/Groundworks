@@ -10,16 +10,18 @@ import Maps from './views/Maps.jsx';
 import Home from './views/Home.jsx';
 import Role from './views/Role.jsx';
 import OwnSetup from './views/OwnSetup.jsx';
-import {Terrain, Reveal, Pick} from './views/Survey.jsx';
+import {Reveal, Pick} from './views/Survey.jsx';
+import {Terrain} from './views/World.jsx';
 import MapView from './views/MapView.jsx';
 import Step from './views/Step.jsx';
+import QuickRead from './views/QuickRead.jsx';
 import Finished, {Export} from './views/Finished.jsx';
 import Character from './views/Character.jsx';
 import Library from './views/Library.jsx';
 
 const loadMotion = ()=>import('./motionFeatures.js').then(mod=>mod.default);
 
-const VIEWS = {home:Home, intro:Intro, role:Role, 'own-setup':OwnSetup, terrain:Terrain, reveal:Reveal, pick:Pick, map:MapView,
+const VIEWS = {home:Home, intro:Intro, role:Role, quick:QuickRead, 'own-setup':OwnSetup, terrain:Terrain, reveal:Reveal, pick:Pick, map:MapView,
   step:Step, finished:Finished, export:Export, character:Character, library:Library, maps:Maps};
 
 export default function App(){

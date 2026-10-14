@@ -9,9 +9,10 @@ const OWN = ['Describe it', 'Make the calls', 'Your plan'];
 export function stageOf(S){
   const v = S.view;
   if(S.mode==='guided'){
-    if(v==='terrain') return 0;
+    if(v==='terrain') return S.world && S.world.level>=2 ? 1 : 0;   // a work area's processes are the choice
     if(v==='reveal' || v==='pick') return 1;
     if(v==='map') return 2;
+    if(v==='quick') return S.steps.length && S.steps.every(st=>(S.ans[st.id]||{}).revealed) ? 3 : 2;   // v8: the quick read
     if(v==='step'){ const st = S.steps[S.cur], a = st && S.ans[st.id]; return a && a.revealed ? 3 : 2; }
     if(v==='finished' || v==='export') return 4;
   }

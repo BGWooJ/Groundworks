@@ -15,7 +15,7 @@ export function write(key, v){ try{ localStorage.setItem(key, v); }catch(e){ /* 
 export function remove(key){ try{ localStorage.removeItem(key); }catch(e){} }
 
 export function blankProfile(){ return {role:null, xp:0, stats:blankStats(), skills:{}, families:{}, codex:{}, exported:{}, walks:0, complications:0, strong:0, seen:{}, unseen:{marks:[], reports:[], rank:null}}; }
-export function blankJournal(){ return {marks:{}, flagships:[], walks:[], maps:{}, progress:{}, profile:blankProfile()}; }
+export function blankJournal(){ return {marks:{}, flagships:[], walks:[], maps:{}, progress:{}, route:[], profile:blankProfile()}; }
 
 const isObj = x=>!!x && typeof x==='object' && !Array.isArray(x);
 /* Copy plain data only, dropping keys that could change how objects behave. A save link can come from
@@ -41,6 +41,8 @@ export function normalJournal(raw){
   if(!Array.isArray(out.flagships)) out.flagships = [];
   out.walks = Array.isArray(out.walks) ? out.walks.filter(isObj) : [];
   out.maps = isObj(out.maps) ? Object.fromEntries(Object.entries(out.maps).filter(([,m])=>isObj(m) && Array.isArray(m.steps) && m.steps.every(isObj))) : {};
+  out.route = Array.isArray(out.route) ? out.route.filter(x=>typeof x==='string').slice(0,3) : [];
+  out.routeRun = isObj(out.routeRun) && Array.isArray(out.routeRun.pids) ? {pids:out.routeRun.pids.filter(x=>typeof x==='string'), at:+out.routeRun.at || 0} : null;
   out.progress = isObj(out.progress) ? Object.fromEntries(Object.entries(out.progress).filter(([,p])=>isObj(p) && typeof p.procId==='string')) : {};
   return out;
 }

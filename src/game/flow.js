@@ -5,7 +5,7 @@
 import {CAPS, CAP_FAMILIES, SHAPES, INPUTS, REPS, STAKES, AUTONOMY, GUARDRAILS, COMPANY, FUNCTIONS} from '../content/meridian.js';
 import {getExpedition} from '../content/expeditions.js';
 import {BANDS, BAND_CAPS, WHERE, BUILDERS, SENSITIVITY, expertBand, bandName, numbersOf, valueOf, feasOf, verdictOf,
-  fieldVerdict, suggestGuardrails, VERDICTS, round} from '../engine/engine.js';
+  fieldVerdict, suggestGuardrails, suggestCaps, VERDICTS, round} from '../engine/engine.js';
 import {scoreTools, processHeading, destOf, whyTool} from '../engine/tools.js';
 import {CHARTER} from '../content/campaign.js';
 
@@ -81,9 +81,13 @@ export function markOf(S, q, st, val){
   if(q.k==='cap') return st.fit.best.includes(val) ? 'match' : (st.fit.ok.includes(val) ? 'near' : 'miss');
   return (q.alts(st)||[]).includes(val) ? 'near' : 'miss';
 }
+/* The questions a read is scored on: the ones the player answered themselves. v8: facts the quick read
+   gives (inputs, volume, stakes) and a capability it suggested are not the player's calls, so they earn
+   nothing and cost nothing. In a full read nothing is given, so this is every question that applies. */
+export function scoredQs(a){ return SCORED.filter(q=>asks(q, a) && !(a._given && a._given[q.k]) && !(q.k==='cap' && a._capAuto)); }
 export function scoreRead(S, st){
   const a = S.ans[st.id] || {};
-  const scored = SCORED.filter(q=>asks(q, a));
+  const scored = scoredQs(a);
   const marks = scored.map(q=>markOf(S, q, st, a[q.k]));
   const score = marks.reduce((s,m)=>s + (m==='match'?1:(m==='near'?0.5:0)), 0), ratio = score/scored.length;
   const tier = ratio>=.85?'great':(ratio>=.6?'good':(ratio>=.35?'mixed':'off'));
@@ -109,6 +113,27 @@ export function stepEval(S, st, whatif){
   return {a, nums, value, feas, verdict:verdictOf(a, value, feas), tool:scoreTools(a)};
 }
 export function readSteps(S){ return S.steps.filter(st=>stepDone(S, st)); }
+
+/* ---------- v8: the quick read ----------
+   The facts of a Meridian step (inputs, volume, stakes) are given; the player makes three calls: the
+   kind of work, whether it is an LLM's kind of work, and how much it should do on its own. The
+   capability is suggested from the first two and can be changed. */
+export const QUICK_CALLS = ['shape', 'band', 'auto'];
+export const QUICK_CTX = {where:'office', builder:'unsure', sens:'internal'};
+export function suggestCapFor(a){
+  const allowed = BAND_CAPS[a.band] || [];
+  const fits = a.shape ? suggestCaps({shape:a.shape, input:a.input}).caps.map(c=>c.id) : [];
+  return fits.find(c=>allowed.includes(c)) || allowed[0] || null;
+}
+export function quickCalled(a){ return !!(a && a.shape && a.band && a.cap && (a.cap==='fix' || a.auto)); }
+/* Give a step its facts and the walk's organisation answers, without touching the player's calls. */
+export function giveFacts(a, st, ctx){
+  ['input','rep','stakes'].forEach(k=>{ if(!a[k] || (a._given && a._given[k])){ a[k] = st.expert[k]; (a._given = a._given || {})[k] = true; } });
+  const c = Object.assign({}, QUICK_CTX, ctx || {});
+  ['where','builder','sens'].forEach(k=>{ a[k] = c[k]; });
+  pruneAnswers(a);
+  return a;
+}
 export function nextOpenIndex(S){ const i = S.steps.findIndex(st=>!stepDone(S, st)); return i<0 ? null : i; }
 export function headingFor(S, steps){
   const res = steps.map(st=>({index:S.steps.indexOf(st), tool:stepDone(S, st) ? stepEval(S, st).tool : null})).filter(x=>x.tool);
@@ -296,13 +321,34 @@ export function planFor(S){
     steps: withHours.length, of: rows.length} : null;
 
   const firstGround = phases[0].steps.map(r=>r.n), start = rows.find(r=>r.n===startN);
-  let headline;
+  /* v8 fix: the headline was overwritten with "nothing needs a tool" whenever nothing was to be built,
+     and was read before it was set when the best step was engineering with no groundwork (a crash). */
+  let headline = null;
   if(start && PHASE_OF[start.verdict]==='prove') headline = `Start by piloting step ${start.n}, ${start.name.toLowerCase()} (${start.verdictName.toLowerCase()})` + (firstGround.length ? `, while the groundwork on ${list(firstGround)} is done.` : '.');
   else if(firstGround.length) headline = `Start with groundwork on ${list(firstGround)}. No step is ready to pilot until that is done.`;
   const builds = phases[2].steps.map(r=>r.n);
-  if(builds.length && headline.startsWith('Start')) headline += ` ${builds.length>1 ? 'Steps' : 'Step'} ${builds.length>1 ? builds.slice(0,-1).join(', ') + ' and ' + builds[builds.length-1] : builds[0]} can be built alongside, with rules and integration.`;
-  else if(phases[2].steps.length) headline = `The answer here is mostly engineering: ${list(phases[2].steps.map(r=>r.n))} can be built with rules and integration.`;
+  if(headline){ if(builds.length) headline += ` ${builds.length>1 ? 'Steps' : 'Step'} ${builds.length>1 ? builds.slice(0,-1).join(', ') + ' and ' + builds[builds.length-1] : builds[0]} can be built alongside, with rules and integration.`; }
+  else if(builds.length) headline = `The answer here is mostly engineering: ${list(builds)} can be built with rules and integration.`;
   else headline = 'Nothing here needs a new tool now. Keep it simple, and revisit if the volume or the picture changes.';
 
   return {headline, phases, depends, asks, measures, hours, charter: c && (c.challenge || c.success) ? c : null};
+}
+
+/* ---------- v8: comparing the processes on a route ----------
+   When every process on a route has been walked, which has the strongest case, and where to start. */
+export function routeSummary(J){
+  const run = J.routeRun; if(!run || !Array.isArray(run.pids) || run.pids.length<2) return null;
+  const rows = run.pids.map(pid=>{
+    const w = J.walks.find(x=>x.procId===pid && (x.when||0)>=run.at && x.ans), e = getExpedition(pid);
+    if(!w || !e) return {pid, name:e ? e.name : pid, done:false};
+    const S = {mode:'guided', procId:pid, steps:e.steps, ans:w.ans, whatif:{}};
+    const best = startStep(S), plan = planFor(S), verdicts = {};
+    e.steps.forEach(st=>{ if(stepDone(S, st)){ const v = stepEval(S, st).verdict; verdicts[v] = (verdicts[v]||0) + 1; } });
+    return {pid, name:e.name, fn:e.fn, done:true, score:best ? best.s : -99, start:best ? {n:e.steps.indexOf(best.st)+1, name:best.st.name, verdict:best.e.verdict, value:best.e.value, feas:best.e.feas} : null,
+      headline:plan ? plan.headline : '', verdicts, steps:e.steps.length};
+  });
+  const done = rows.filter(r=>r.done);
+  if(done.length<rows.length) return {complete:false, rows, remaining:rows.filter(r=>!r.done)};
+  const ranked = [...rows].sort((a,b)=>b.score-a.score);
+  return {complete:true, rows:ranked, first:ranked[0]};
 }

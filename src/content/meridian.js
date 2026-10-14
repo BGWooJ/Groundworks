@@ -1,4 +1,5 @@
 import {NEW_GROUPS, NEW_FUNCTIONS} from './districts.js';
+import {MORE_ALL} from './more/index.js';
 /* ---------- Toolkit: capability types (no brands) ---------- */
 const CAPS = {
   extract:  {name:'Document extraction', one:'Reads documents, emails and forms and pulls out the specific fields you need.',
@@ -549,5 +550,7 @@ const DISCUSS = {
 /* v5: five more parts of the Bank. */
 MAP_GROUPS.push(...NEW_GROUPS);
 FUNCTIONS.push(...NEW_FUNCTIONS);
+/* v8: the processes added in phase 4 join their divisions. */
+MORE_ALL.forEach(x=>FUNCTIONS.find(f=>f.id===x.fn).processes.push(x.proc));
 
 export {CAPS, CAP_FAMILIES, SHAPES, INPUTS, REPS, STAKES, AUTONOMY, LEVELS, DIMS, GUARDRAILS, COMPANY, MAP_GROUPS, FUNCTIONS, PROCESSES, TAKEAWAYS, DISCUSS};

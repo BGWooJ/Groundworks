@@ -5,7 +5,7 @@ import {VERDICTS} from '../engine/engine.js';
 import {destOf, whyTool} from '../engine/tools.js';
 import {reportById} from '../content/fieldReports.js';
 import {STATS, standingLine, rankOf} from '../game/rpg.js';
-import {stepDone, stepEval, startStep, finishedTitle, whatifChanges, guardrailsFor, guardrailName, levelName, round, buildExport, lppPrompt, planFor} from '../game/flow.js';
+import {stepDone, stepEval, startStep, finishedTitle, whatifChanges, guardrailsFor, guardrailName, levelName, round, buildExport, lppPrompt, planFor, routeSummary} from '../game/flow.js';
 import {MapRow, Heading} from './MapView.jsx';
 import {Icon, Emblem} from '../components/ui.jsx';
 import {StatShift} from '../components/Feedback.jsx';
@@ -70,8 +70,29 @@ function Plan({S}){
   </section>;
 }
 
+/* v8: at the end of a route, the processes side by side: which has the strongest case, and where to start. */
+function RouteCompare({S}){
+  const J = useGame(s=>s.J);
+  if(S.mode!=='guided' || S.reopened) return null;
+  const sum = routeSummary(J);
+  if(!sum || !sum.complete || !sum.rows.some(r=>r.pid===S.procId)) return null;
+  const f = sum.first, fv = f.start && VERDICTS[f.start.verdict];
+  return <section className="routecmp" aria-labelledby="rc-h">
+    <p className="kicker"><Icon name="route"/>Your route, compared</p>
+    <h2 id="rc-h" className="h3">{f.start ? `Start with ${f.name}` : 'None of these is ready for a tool yet'}</h2>
+    {f.start && <p>Its strongest step is <b>{f.start.name.toLowerCase()}</b> ({fv.name.toLowerCase()}): {levelName(f.start.value).toLowerCase()} value, {levelName(f.start.feas).toLowerCase()} feasibility. {f.headline}</p>}
+    <table className="rctable"><thead><tr><th scope="col">Process</th><th scope="col">Strongest step</th><th scope="col">Verdicts</th></tr></thead>
+      <tbody>{sum.rows.map((r,i)=><tr key={r.pid} className={i===0 ? 'first' : ''}>
+        <th scope="row">{i===0 && <span className="rc-first">Start here</span>}{r.name}<span className="muted small">{r.fn}</span></th>
+        <td>{r.start ? <><Emblem verdict={r.start.verdict} size={20}/> {r.start.name}<span className="muted small">{levelName(r.start.value)} value, {levelName(r.start.feas).toLowerCase()} feasibility</span></> : <span className="muted">No step stands out</span>}</td>
+        <td><span className="rc-vs">{Object.entries(r.verdicts).sort((a,b)=>b[1]-a[1]).map(([v,n])=><span key={v} title={VERDICTS[v].name}><Emblem verdict={v} size={18}/>{n}</span>)}</span></td>
+      </tr>)}</tbody></table>
+  </section>;
+}
+
 export default function Finished(){
-  const S = useGame(s=>s.S);
+  const S = useGame(s=>s.S), route = useGame(s=>s.J.route);
+  const nextOnRoute = S.mode==='guided' && !S.reopened ? route.find(pid=>pid!==S.procId && getExpedition(pid)) : null;
   const t = finishedTitle(S), best = startStep(S);
   let start = null;
   if(best){
@@ -89,6 +110,7 @@ export default function Finished(){
     <header className="scene"><p className="kicker">{S.mode==='guided' ? getExpedition(S.procId).name : S.own.process}, all steps read</p><h1>{t.h1}</h1><p className="lede">{t.lede}</p></header>
     {anyWi && <p className="callout wi-on"><Icon name="spark"/>What-if view. The map shows what would change; switch everything off to see your answers again.</p>}
     {S.reopened && <p className="callout back"><Icon name="map"/><span>A finished walk, reopened. Nothing is scored again; take it further or walk the process afresh.</span></p>}
+    <RouteCompare S={S}/>
     <MapRow S={S} final/>
     <Plan S={S}/>
     {S.mode==='guided' && <Debrief S={S}/>}
@@ -101,7 +123,8 @@ export default function Finished(){
     </section>}
     {!S.reopened && <KeepProgress/>}
     <div className="actions"><button className="btn primary" onClick={actions.toExport}><Icon name="download"/>Take the map further</button>
-      {S.mode==='guided' ? <button className="btn ghost" onClick={actions.startGuided}>Walk another process</button> : <button className="btn ghost" onClick={actions.toMap}>Back to the map</button>}
+      {nextOnRoute && <button className="btn brass" onClick={()=>actions.pickProc(nextOnRoute)}><Icon name="route"/>Next on your route: {getExpedition(nextOnRoute).name}</button>}
+      {S.mode==='guided' ? <button className="btn ghost" onClick={actions.startGuided}>{nextOnRoute ? 'Back to the map' : 'Walk another process'}</button> : <button className="btn ghost" onClick={actions.toMap}>Back to the map</button>}
       <button className="btn ghost" onClick={actions.home}><Icon name="home"/>Home</button></div>
   </>;
 }

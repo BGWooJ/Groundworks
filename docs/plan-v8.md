@@ -191,3 +191,61 @@ first mention of the Guide, and the lens line on both lens screens.
   desktop the top-bar buttons show icons only. The process name shortens before anything wraps.
 - Saves are treated as untrusted: keys that could change how objects behave are dropped, damaged
   entries are removed, and anything that unpacks to more than 4 MB is refused.
+
+**Phase 3, the world map: done.** Built in SVG with d3-zoom and Motion. Three.js was offered and not
+needed: a flat map is sharper at every zoom, keeps every division a real button for keyboards and
+screen readers, and stays smooth on modest hardware. Decisions and fixes along the way:
+- **Ratings:** in a work area, processes show their description and step count but not their
+  hotspot rating, so judging the evidence stays part of the game. "How do they rank?" on the route
+  shows the ranking, as the full survey did.
+- **Screen sizes:** a wide screen shows the whole island. A phone opens zoomed to its height, centred
+  on the mission, with labels at a readable size.
+- **Reduced motion:** levels only fade, with no scaling at all.
+- **The route:** kept with your progress, and in save links. A walked process leaves the route, and
+  the finished map offers the next one.
+- **Fixed:** starting a walk used to carry over state from the screen it was started from, such as
+  which complications had already fired. Every walk now starts clean.
+- **Economists' Forecasting area** has no processes yet and is hidden until phase 4 fills it.
+
+**Phase 4, more ground: done.**
+- **What was added:** 54 new processes and 174 new steps, for 92 processes and 300 steps in 38 work
+  areas. They are written in `src/content/more/` from the list in section 4, with a few changes
+  where an item duplicated an existing process:
+  - Summarising business contacts was already the district intelligence process, so the regional
+    area gets the business survey coding instead.
+  - Tracking exam findings was already a step of examination planning, so it became a quality review
+    of workpapers.
+- **How each file was checked:** by `scripts/check-more.mjs`, then read by hand for realism, honesty
+  and house style. The existing 38 processes are unchanged. The pinned scoring fixture now covers all
+  92, and the existing entries are identical.
+- **Fixed, a v7 bug in the plan headline** found while playing the new processes:
+  - **Wrong headline:** "Nothing here needs a new tool now" replaced the real headline whenever
+    nothing was to be built. That happened in 41 of 92 processes read the Guide's way, including the
+    briefing cycle flagship.
+  - **Crash:** when the best step was engineering with nothing needing groundwork, the page crashed.
+    This could also happen on a map of your own.
+  - **Now:** a test reads every process the Guide's way and checks its headline.
+- **A finding, not changed:** 26 of the original 126 Guide reads would draw a challenge if a player
+  gave the same answers on a map of their own. Players never see challenges on Meridian, so it is
+  reported by `scripts/check-guide-reads.mjs`, not enforced. None of the new reads draw one.
+
+**Phase 5, the quick read: done.** As planned, with these details settled while building it:
+- **What is scored:** only the calls a player makes. Given facts earn and cost nothing, and so does a
+  capability left as suggested. Picking one makes it count. Switching the LLM call re-suggests the
+  capability when the old pick no longer fits ("fix the process" is not an LLM capability).
+- **"About your organisation":** the three organisation answers are set once on the quick read screen
+  and remembered for later reads, as planned for "once per route", but also across routes.
+- **Complications:** a quick read meets one, after the comparison and before the plan. A full read still
+  meets one per step.
+- **Who gets which read:** quick by default, full for the Builder lens. A walk saved before v8 resumes
+  as a full read, so nobody loses answers already given.
+- **End of a route:** after the last process of a route of two or three, the finished map compares them
+  and names where to start, from each process's plan.
+- **Fixed while building it:**
+  - A quick read could fire two complications, one per step, because the trigger counted steps. It now
+    fires once.
+  - The quick read's footer reused the class of the progress bar and inherited its fixed width. It has
+    its own class now.
+- **Checked by:** unit tests for the suggestion, scoring, comparison, complication and route summary
+  (`tests/v8.test.js`), and browser checks for the screen, the comparison, the Builder default and
+  phone layout (`scripts/browser-check-v8.cjs`).

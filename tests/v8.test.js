@@ -160,3 +160,152 @@ describe('opening saved progress', ()=>{
     expect(store.getState().J.profile.lastSaveKind).toBe('link');
   });
 });
+
+/* ---------- phase 3: the world ---------- */
+describe('the world', ()=>{
+  it('places every process in exactly one work area, and every division on the map', async ()=>{
+    memoryStorage();
+    const {checkAreas, areasOf, areaOfProcess} = await import('../src/content/areas.js');
+    const {LANDMARKS} = await import('../src/content/world.js');
+    const {FUNCTIONS} = await import('../src/content/meridian.js');
+    expect(checkAreas()).toEqual([]);
+    FUNCTIONS.forEach(f=>{ expect(LANDMARKS[f.id]).toBeTruthy(); expect(areasOf(f.id).length).toBeGreaterThan(0); });
+    expect(areaOfProcess('briefing').id).toBe('econ-brief');
+  });
+  it('goes in and out a level at a time, and remembers where each level was entered', async ()=>{
+    const {store} = await freshStore();
+    const {actions, getState} = store;
+    actions.chooseRole('builder'); actions.startGuided();
+    expect(getState().S).toMatchObject({view:'terrain', world:{level:0, hint:true}});
+    actions.worldEnter('econ', {x:.3, y:.4});
+    expect(getState().S.world).toMatchObject({level:1, fnId:'econ', dir:1, hint:false});
+    actions.worldArea('econ-brief', {x:.6, y:.5});
+    expect(getState().S.world).toMatchObject({level:2, areaId:'econ-brief'});
+    expect(getState().S.world.origins).toEqual({1:{x:.3, y:.4}, 2:{x:.6, y:.5}});
+    actions.worldUp(0);
+    expect(getState().S.world).toMatchObject({level:0, fnId:null, areaId:null, dir:-1, from:2});
+  });
+  it('keeps a route of at most three, which a finished walk leaves', async ()=>{
+    const {store} = await freshStore();
+    const {actions, getState} = store;
+    ['ap','benefitsq','ratevote','helpdesk'].forEach(p=>actions.routeToggle(p));
+    expect(getState().J.route).toEqual(['ap','benefitsq','ratevote']);
+    actions.routeToggle('benefitsq');
+    expect(getState().J.route).toEqual(['ap','ratevote']);
+    const st = await import('../src/game/storage.js');
+    expect(st.normalJournal({profile:{}, route:['ap', 7, 'x', 'y', 'z']}).route).toEqual(['ap','x','y']);
+  });
+  it('starts every walk from a clean slate', async ()=>{
+    const {store} = await freshStore();
+    const {actions, getState} = store;
+    actions.chooseRole('builder'); actions.startGuided(); actions.pickProc('ap');
+    store.update(d=>{ d.S.compl = {fired:['x'], answers:[1]}; d.S.finishedOnce = true; });
+    actions.pickProc('ratevote');
+    expect(getState().S).toMatchObject({procId:'ratevote', view:'map', finishedOnce:false, compl:{fired:[], answers:[]}});
+  });
+});
+
+/* ---------- phase 4: more ground ---------- */
+describe('more ground', ()=>{
+  it('opens 92 processes in 38 work areas, each area with two or three', async ()=>{
+    memoryStorage();
+    const {FUNCTIONS} = await import('../src/content/meridian.js');
+    const {AREAS, areasOf, checkAreas} = await import('../src/content/areas.js');
+    const {validateExpeditions} = await import('../src/content/expeditions.js');
+    expect(FUNCTIONS.reduce((n,f)=>n+f.processes.length, 0)).toBe(92);
+    expect(Object.values(AREAS).flat().filter(a=>a.processes.length).length).toBe(38);
+    FUNCTIONS.forEach(f=>areasOf(f.id).forEach(a=>{ expect(a.processes.length).toBeGreaterThanOrEqual(2); expect(a.processes.length).toBeLessThanOrEqual(3); }));
+    expect(checkAreas()).toEqual([]);
+    expect(validateExpeditions()).toEqual([]);
+  });
+  it('gives every process a plan with an honest headline, read the Guide’s way', async ()=>{
+    memoryStorage();
+    const {FUNCTIONS} = await import('../src/content/meridian.js');
+    const {getExpedition} = await import('../src/content/expeditions.js');
+    const {planFor, stepEval} = await import('../src/game/flow.js');
+    const {expertBand} = await import('../src/engine/engine.js');
+    FUNCTIONS.forEach(f=>f.processes.forEach(p=>{
+      const e = getExpedition(p.id), S = {mode:'guided', procId:p.id, steps:e.steps, ans:{}, whatif:{}, includeDesc:false};
+      e.steps.forEach(st=>{ S.ans[st.id] = {shape:st.expert.shape, input:st.expert.input, rep:st.expert.rep, stakes:st.expert.stakes, band:expertBand(st), cap:st.expertPick, auto:st.autoBest, where:'office', builder:'team', sens:'internal', revealed:true}; });
+      const plan = planFor(S), verdicts = e.steps.map(st=>stepEval(S, st).verdict);
+      const nothing = verdicts.every(v=>v==='small' || v==='park');
+      expect(/^Nothing here/.test(plan.headline), `${p.id}: ${verdicts.join(',')} -> ${plan.headline}`).toBe(nothing);
+    }));
+  });
+});
+
+/* ---------- phase 5: the quick read ---------- */
+describe('the quick read', ()=>{
+  const call = (actions, getState, pick)=>getState().S.steps.forEach((st, i)=>{
+    const p = pick(st); actions.quickCall(i, 'shape', p.shape); actions.quickCall(i, 'band', p.band); if(p.cap) actions.quickCall(i, 'cap', p.cap); if(p.auto) actions.quickCall(i, 'auto', p.auto); });
+  it('is the default except for the Builder lens, and old walks resume as full reads', async ()=>{
+    let {store} = await freshStore();
+    store.actions.chooseRole('steward'); store.actions.startGuided(); store.actions.pickProc('ap');
+    expect(store.getState().S.read).toBe('quick');
+    ({store} = await freshStore());
+    store.actions.chooseRole('builder'); store.actions.startGuided(); store.actions.pickProc('ap');
+    expect(store.getState().S.read).toBe('full');
+    ({store} = await freshStore({gw_journal_v4:JSON.stringify({marks:{}, walks:[], maps:{}, profile:{role:'steward', xp:10},
+      progress:{ap:{procId:'ap', ans:{'ap-1':{shape:'extract'}}, dug:{}, cur:0, updated:1}}})}));
+    store.actions.resumeWalk('ap');
+    expect(store.getState().S.read).toBe('full');
+  });
+  it('gives the facts, suggests a capability, and scores only the calls made', async ()=>{
+    const {store} = await freshStore();
+    const {actions, getState} = store;
+    actions.chooseRole('steward'); actions.startGuided(); actions.pickProc('ap');
+    const st = getState().S.steps[0];
+    actions.quickCall(0, 'shape', 'extract'); actions.quickCall(0, 'band', 'core');
+    let a = getState().S.ans[st.id];
+    expect(a).toMatchObject({input:st.expert.input, rep:st.expert.rep, stakes:st.expert.stakes, cap:'extract', _capAuto:true, where:'office', builder:'unsure', sens:'internal'});
+    actions.quickCall(0, 'band', 'none');
+    expect(getState().S.ans[st.id].cap).toBe('rules');            // follows the LLM call until the player picks one
+    actions.quickCall(0, 'cap', 'fix');
+    a = getState().S.ans[st.id];
+    expect(a._capAuto).toBe(false); expect(a.auto).toBeUndefined();  // a process fix has no autonomy call
+    const {scoredQs, quickCalled} = await import('../src/game/flow.js');
+    expect(quickCalled(a)).toBe(true);
+    expect(scoredQs(a).map(q=>q.k)).toEqual(['shape','band','cap']);  // the player chose the capability, so it counts
+    actions.quickCall(0, 'band', 'core'); actions.quickCall(0, 'auto', 'review');
+    a = getState().S.ans[st.id];
+    expect(a._capAuto).toBe(true); expect(a.cap).not.toBe('fix');      // a fix is not an LLM capability, so the suggestion returns
+    expect(scoredQs(a).map(q=>q.k)).toEqual(['shape','band','auto']);
+    actions.quickCall(0, 'cap', 'summarize');
+    expect(scoredQs(getState().S.ans[st.id]).map(q=>q.k)).toEqual(['shape','band','cap','auto']);
+  });
+  it('compares the whole process at once, then meets one complication before the plan', async ()=>{
+    const {store} = await freshStore();
+    const {actions, getState} = store;
+    actions.chooseRole('steward'); actions.startGuided(); actions.pickProc('ap');
+    actions.quickCompare();
+    expect(getState().S.steps.some(st=>(getState().S.ans[st.id]||{}).revealed)).toBe(false);   // not until every step has its calls
+    call(actions, getState, ()=>({shape:'extract', band:'core', auto:'review'}));
+    actions.quickCompare();
+    const S = getState().S;
+    expect(S.steps.every(st=>S.ans[st.id].revealed)).toBe(true);
+    const P = getState().J.profile;
+    expect(P.skills.shape.n).toBe(S.steps.length); expect(P.skills.input).toBeUndefined(); expect(P.skills.cap).toBeUndefined();
+    actions.nextStep();
+    expect(getState().S.modal && getState().S.modal.type).toBe('compl');
+    actions.complChoose(0); actions.complContinue();
+    expect(getState().S.compl.fired.length).toBe(1);
+    expect(getState().S.view).toBe('finished');
+    expect(getState().J.walks[0]).toMatchObject({procId:'ap', read:'quick'});
+  });
+  it('compares a finished route and says where to start', async ()=>{
+    const {store} = await freshStore();
+    const {actions, getState} = store;
+    const {routeSummary} = await import('../src/game/flow.js');
+    actions.chooseRole('steward'); actions.routeToggle('ap'); actions.routeToggle('ratevote'); actions.toPick();
+    expect(getState().J.routeRun.pids).toEqual(['ap','ratevote']);
+    const walk = pid=>{ actions.pickProc(pid); call(actions, getState, st=>({shape:st.expert.shape, band:'core', auto:'review'})); actions.quickCompare(); actions.nextStep();
+      if(getState().S.modal){ actions.complChoose(0); actions.complContinue(); } };
+    walk('ap');
+    expect(routeSummary(getState().J).complete).toBe(false);
+    walk('ratevote');
+    const sum = routeSummary(getState().J);
+    expect(sum.complete).toBe(true);
+    expect(sum.rows.map(r=>r.pid)).toEqual(['ap','ratevote']);        // invoices have the stronger case than the rate decision
+    expect(sum.first.start.verdict).toBeTruthy();
+  });
+});

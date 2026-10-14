@@ -79,3 +79,6 @@ export function Meter({value, max, label, tone}){
 export function Stars({n, of}){
   return <span className="stars" role="img" aria-label={`${n} of ${of||3} stars`}>{Array.from({length:of||3}).map((_,i)=><Icon key={i} name="star" className={i<n?'on':''}/>)}</span>;
 }
+
+/* An icon's drawing without its own <svg> wrapper, for placing inside a larger SVG (the world map). */
+export function iconInner(name){ return icon(name).replace(/^<svg[^>]*>/, '').replace(/<\/svg>\s*$/, ''); }
