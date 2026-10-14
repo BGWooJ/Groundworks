@@ -314,7 +314,7 @@ export const NEW_COMPACT = {
    metric:'Hours spent answering, and answers later found to be wrong', g:'sampling escalation', hyp:'Answer every routine question in a minute, consistently, with the clause cited.', data:'The travel policy and a year of questions with the desk’s answers.'},
   {n:'Approve policy exceptions', who:'Finance director', vol:'About 8 a month', sys:'Email',
    notes:'Claims that break the policy for a good reason, such as a hotel booked late during a storm, are emailed to the finance director, who approves or declines them, usually the same day.',
-   pain:'Little measurable pain. The director sometimes decides similar cases differently months apart.',
+   pain:'Little measurable cost. The director sometimes decides similar cases differently months apart.',
    p:'decide text low mid', best:'recommend', auto:'assist',
    why:'At eight a month, a short checklist and a record of past decisions keep the calls consistent. A dedicated tool would never pay for itself.',
    disc:[['Eight a month','About eight exceptions a month, each decided in minutes.','Volume: not worth a tool.'],['Precedent in a notebook','The director keeps past decisions in a personal notebook.','Write the precedents into a one-page guide, and share it.']],

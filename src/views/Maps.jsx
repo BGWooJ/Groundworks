@@ -1,5 +1,5 @@
 /* My maps (v7): every walk and map you have started or finished, with a way back into each. */
-import {useRef, useState} from 'react';
+import {useState} from 'react';
 import {useGame, actions} from '../game/store.js';
 import {workItems, ago, progressLabel} from '../game/journal.js';
 import {Icon, Meter} from '../components/ui.jsx';
@@ -40,19 +40,17 @@ function Row({x}){
 }
 
 export default function Maps(){
-  const J = useGame(s=>s.J), file = useRef(null);
+  const J = useGame(s=>s.J);
   const items = workItems(J), open = items.filter(x=>!x.done), done = items.filter(x=>x.done);
-  const pick = e=>{ const f = e.target.files && e.target.files[0]; if(!f) return;
-    const r = new FileReader(); r.onload = ()=>actions.openMapFile(String(r.result)); r.readAsText(f); e.target.value = ''; };
   return <>
     <button className="linkbtn strong" onClick={actions.back}><Icon name="back"/>Back</button>
     <header className="scene"><p className="kicker">Your work</p><h1>My maps</h1>
-      <p className="lede">Every walk and map you have started is saved in this browser as you go. Pick any of them up again here. To carry a map to another browser or device, save it as a file and open it there.</p></header>
+      <p className="lede">Every walk and map you have started is saved in this browser as you go. Pick any of them up again here. To carry on in another browser or on another computer, save your progress as a link or a file and open it there.</p></header>
     <div className="row mapsbar">
       <button className="btn brass" onClick={actions.startOwn}><Icon name="plus"/>Map a new process</button>
-      <button className="btn secondary" onClick={actions.startGuided}><Icon name="map"/>Walk a Meridian process</button>
-      <button className="btn secondary" onClick={()=>file.current && file.current.click()}><Icon name="download"/>Open a map file</button>
-      <input ref={file} type="file" accept=".json,application/json" hidden onChange={pick} aria-label="Open a map file"/>
+      <button className="btn secondary" onClick={actions.startGuided}><Icon name="map"/>Explore Meridian</button>
+      <button className="btn secondary" onClick={actions.saveOpen}><Icon name="send"/>Save progress</button>
+      <button className="btn secondary" onClick={()=>actions.restoreOpen()}><Icon name="download"/>Open saved progress</button>
     </div>
     <section aria-labelledby="ip"><h2 id="ip" className="h3 mt">In progress</h2>
       {open.length ? <ul className="worklist">{open.map(x=><Row key={x.key} x={x}/>)}</ul>

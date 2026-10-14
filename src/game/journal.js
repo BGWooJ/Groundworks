@@ -4,6 +4,7 @@
    ===================================================================== */
 import {getExpedition} from '../content/expeditions.js';
 import {answered} from './flow.js';
+import {rankOf} from './rpg.js';
 
 export function workItems(J){
   const items = [];
@@ -38,3 +39,13 @@ export function progressLabel(x){
   if(x.kind==='finished-walk') return x.summary || 'Finished';
   return x.read===x.total ? `All ${x.total} steps read` : `${x.read} of ${x.total} steps read`;
 }
+
+/* v8: what a journal holds, in a line, so a player can tell two saves apart before replacing one. */
+export function lastActivity(J){ return workItems(J).reduce((t,x)=>Math.max(t, x.updated||0), 0); }
+export function summaryOf(J){
+  const items = workItems(J), r = rankOf(J.profile.xp || 0);
+  return {rank:r.name, xp:J.profile.xp || 0, inProgress:items.filter(x=>!x.done).length, finished:items.filter(x=>x.done).length,
+    marks:Object.keys(J.marks || {}).length, last:lastActivity(J)};
+}
+/* Work done since the player last saved a link or a file. */
+export function unsaved(J){ const t = lastActivity(J); return !!t && t > (J.profile.lastSave || 0); }

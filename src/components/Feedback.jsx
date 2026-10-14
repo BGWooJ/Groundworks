@@ -1,9 +1,10 @@
-/* Toasts, experience pop-ups and the dialogs: complications, rank-ups and Field Reports. */
+/* Toasts, experience pop-ups and the dialogs: complications, rank-ups and landmark cases. */
 import {useEffect, useRef, useState} from 'react';
 import {m, AnimatePresence, useReducedMotion} from 'motion/react';
 import {useGame, actions, ALL_EVENTS} from '../game/store.js';
 import {fill} from '../game/flow.js';
 import {reportById} from '../content/fieldReports.js';
+import {SaveDialog, RestoreDialog, RestoreConfirm} from './SaveDialogs.jsx';
 import {roleOf} from '../game/rpg.js';
 import {Icon, Art} from './ui.jsx';
 
@@ -46,6 +47,9 @@ export function Modal(){
   let body = null, cls = '';
   if(M && M.type==='compl') { body = <Complication M={M}/>; cls = 'encounter'; }
   else if(M && M.type==='report') { body = <ReportCard id={M.id} onClose={actions.closeModal}/>; cls = 'reportmodal'; }
+  else if(M && M.type==='save') { body = <SaveDialog/>; cls = 'savemodal'; }
+  else if(M && M.type==='restore') { body = <RestoreDialog M={M}/>; cls = 'savemodal'; }
+  else if(M && M.type==='restore-confirm') { body = <RestoreConfirm M={M}/>; cls = 'savemodal'; }
   const dy = reduce ? 0 : 24;
   return <AnimatePresence>{M && <m.div key="modal" className="modal" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration: reduce ? 0 : .18}}>
     <m.div className={'dispatch ' + cls} ref={card} role="dialog" aria-modal="true" aria-labelledby="dlgTitle"
@@ -72,7 +76,7 @@ function Complication({M}){
     <p className={`vtag vt-${tag[0]}`}>{tag[1]}</p>
     <p className="dtext">{o.fb}</p>
     <StatShift d={o.d}/>
-    {r && <aside className="dreport"><span className="dr-k"><Icon name="book"/>A real case: {r.org}, {r.year}</span><b>{r.title}</b><p>{r.lesson}</p></aside>}
+    {r && <aside className="dreport"><span className="dr-k"><Icon name="book"/>A landmark case: {r.org}, {r.year}</span><b>{r.title}</b><p>{r.lesson}</p></aside>}
     <div className="actions"><button className="btn brass" data-autofocus onClick={actions.complContinue}>Continue</button></div>
   </>;
 }
@@ -98,7 +102,7 @@ export function ReportCard({id, onClose, inline}){
 }
 
 /* =====================================================================
-   SPOTLIGHT (v7): marks, ranks and new Field Reports, one at a time.
+   SPOTLIGHT (v7): marks, ranks and new landmark cases, one at a time.
    It waits for any dialog to close, stays for several seconds with a
    visible countdown, pauses while you point at or focus it, and offers
    a way to go and look. Anything you miss stays marked as new on your

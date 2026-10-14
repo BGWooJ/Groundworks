@@ -199,7 +199,7 @@ const FUNCTIONS = [
    brief:'32 people administer health, retirement and leave benefits for 2,400 employees and 3,800 retirees, and run open enrolment every autumn.',
    signals:[{t:'Open enrolment generates 6,000 questions in five weeks. The same forty questions make up most of them.', s:'strong'},{t:'Eligibility documents are checked by hand: 9,000 a year, eleven days average turnaround.', s:'strong'}],
    processes:[
-    {id:'benefitsq', name:'Benefits inquiries & enrolment', d:'Answer questions, verify documents, process elections, administer leave, reconcile carriers.', rating:5, authored:'C', why:'Very high seasonal volume, a small set of repeated questions, documents to read and rules to check, with measurable turnaround pain. A hotspot with a privacy dimension.'},
+    {id:'benefitsq', name:'Benefits inquiries & enrolment', d:'Answer questions, verify documents, process elections, administer leave, reconcile carriers.', rating:5, authored:'C', why:'Very high seasonal volume, a small set of repeated questions, documents to read and rules to check, with a measurable turnaround cost. A hotspot with a privacy dimension.'},
     {id:'retiree', name:'Retiree pension changes', d:'Process address, beneficiary and payment changes for retirees.', rating:3, why:'Steady, document-based and rule-bound. Smaller than enrolment, with an older population that needs a human path.'},
     {id:'vendorrecon', name:'Carrier invoice reconciliation', d:'Match insurance carrier bills to enrolment records.', rating:3, why:'Monthly matching of bills to records. Mostly rules and anomaly detection.'},
    ]},
@@ -529,8 +529,8 @@ const PROCESSES = {
 
 /* ---------- Debrief content ---------- */
 const TAKEAWAYS = [
-  {h:'Start from the work, not the tool', d:'A capability is an answer. Find the question first: a process, a step, a measurable pain.'},
-  {h:'A hotspot has four ingredients', d:'Volume, repetition, a pain you can measure, and inputs that are already captured. Pain alone is not enough.'},
+  {h:'Start from the work, not the tool', d:'A capability is an answer. Find the question first: a process, a step, a cost you can measure.'},
+  {h:'A hotspot has four ingredients', d:'Volume, repetition, a cost you can measure, and inputs that are already captured. A cost alone is not enough.'},
   {h:'The shape of the work points to the capability', d:'Reading, sorting, looking up, writing, condensing, estimating, checking, ranking, allocating, deciding, chasing. Each has a capability type behind it. Brands come last.'},
   {h:'Ask what a rule would do first', d:'If the logic can be written down, a rule or your existing system is cheaper and more predictable. If the step exists because of a broken handoff, fix the handoff.'},
   {h:'Match autonomy to stakes', d:'Assist when a person must own the call. Review when the routine is safe and the exceptions are not. Automate when errors are cheap and reversible.'},

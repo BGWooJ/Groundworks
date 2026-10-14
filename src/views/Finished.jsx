@@ -9,6 +9,7 @@ import {stepDone, stepEval, startStep, finishedTitle, whatifChanges, guardrailsF
 import {MapRow, Heading} from './MapView.jsx';
 import {Icon, Emblem} from '../components/ui.jsx';
 import {StatShift} from '../components/Feedback.jsx';
+import {KeepProgress} from '../components/SaveDialogs.jsx';
 
 function Matrix({S}){
   const cells = {};
@@ -35,7 +36,7 @@ function Debrief({S}){
           {(w.marks||[]).map(id=>{ const m = ALL_MARKS.find(x=>x.id===id); return m ? <li key={id}><Icon name={m.icon}/>Mark: <b>{m.name}</b></li> : null; })}
         </ul>}
         {((w.marks||[]).length>0 || (w.ranks||[]).length>0) && <button className="linkbtn" onClick={()=>actions.view('character')}>See them on your character sheet</button>}</div>
-      <div><h3 className="h4">Field Reports met</h3>{w.reports.length ? <ul className="mini">{w.reports.map(id=><li key={id}><button className="linkbtn" onClick={()=>actions.seeReport(id)}><Icon name="book"/>{reportById(id).title}</button></li>)}</ul> : <p className="muted small">None new on this walk.</p>}</div>
+      <div><h3 className="h4">Landmark cases met</h3>{w.reports.length ? <ul className="mini">{w.reports.map(id=><li key={id}><button className="linkbtn" onClick={()=>actions.seeReport(id)}><Icon name="book"/>{reportById(id).title}</button></li>)}</ul> : <p className="muted small">None new on this walk.</p>}</div>
     </div></section>;
 }
 
@@ -98,6 +99,7 @@ export default function Finished(){
         <button key={k} className={'wi ' + (S.whatif[k]?'on':'')} role="switch" aria-checked={S.whatif[k]} onClick={()=>actions.whatif(k)}><span className="sw"><i/></span>{l}</button>)}</div>
       {wi && (wi.length ? <ul className="wichanges">{wi.map(x=><li key={x.n}><b>Step {x.n}, {x.name}:</b> {x.text}.</li>)}</ul> : <p className="wichanges none">Nothing changes. These steps hold up under this what-if.</p>)}
     </section>}
+    {!S.reopened && <KeepProgress/>}
     <div className="actions"><button className="btn primary" onClick={actions.toExport}><Icon name="download"/>Take the map further</button>
       {S.mode==='guided' ? <button className="btn ghost" onClick={actions.startGuided}>Walk another process</button> : <button className="btn ghost" onClick={actions.toMap}>Back to the map</button>}
       <button className="btn ghost" onClick={actions.home}><Icon name="home"/>Home</button></div>

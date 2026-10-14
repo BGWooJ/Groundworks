@@ -21,29 +21,18 @@ import {QUESTIONS, SCORED, asks, pruneAnswers, answered, stepDone, nextUnanswere
   familyOfCap, whoName, teamOf, shuffle, buildExport, lppPrompt, csvOf, slug, heatOf} from './flow.js';
 import {play, setSound} from '../audio/sound.js';
 
-/* ---------- persistence ---------- */
-const JKEY = 'gw_journal_v4', OLD_KEYS = ['gw_journal_v1'], SKEY = 'gw_settings_v5', GKEY = 'gw_guide';
-export function blankProfile(){ return {role:null, xp:0, stats:blankStats(), skills:{}, families:{}, codex:{}, exported:{}, walks:0, complications:0, strong:0, seen:{}, unseen:{marks:[], reports:[], rank:null}}; }
-export function blankJournal(){ return {marks:{}, flagships:[], walks:[], maps:{}, progress:{}, profile:blankProfile()}; }
-function read(key){ try{ return localStorage.getItem(key); }catch(e){ return null; } }
-function write(key, v){ try{ localStorage.setItem(key, v); }catch(e){ /* private mode: play on without saving */ } }
-function loadJournal(){
-  try{
-    const j = JSON.parse(read(JKEY) || 'null'); if(!j) return blankJournal();
-    const out = Object.assign(blankJournal(), j);
-    out.profile = Object.assign(blankProfile(), j.profile || {});
-    out.profile.stats = Object.assign(blankStats(), out.profile.stats || {});
-    out.profile.unseen = Object.assign({marks:[], reports:[], rank:null}, out.profile.unseen || {});
-    return out;
-  }catch(e){ return blankJournal(); }
-}
+/* ---------- persistence (v8: through storage.js) ---------- */
+import {KEYS, read, write, blankProfile, blankJournal, loadJournal, saveJournal, clearJournal, saveCodeInAddress, readSaveFile, saveError} from './storage.js';
+import {workItems} from './journal.js';
+export {blankProfile, blankJournal};
+const SKEY = KEYS.settings, GKEY = KEYS.guide;
 function loadSettings(){ try{ return Object.assign({sound:false, volume:0.6}, JSON.parse(read(SKEY) || '{}')); }catch(e){ return {sound:false, volume:0.6}; } }
 
 /* V5 marks join the v4 set. */
 export const ALL_MARKS = MARKS.concat([
   {id:'newground', icon:'route',   name:'New ground',        d:'Walk a process in one of the five newer parts of the Bank.'},
   {id:'charter',   icon:'notes',   name:'A clear charter',   d:'Start your own map with the challenge and what success looks like.'},
-  {id:'library5',  icon:'book',    name:'Well read',         d:'Collect five Field Reports.'},
+  {id:'library5',  icon:'book',    name:'Well read',         d:'Collect five landmark cases.'},
   {id:'standing',  icon:'shieldup',name:'Standing tall',     d:'Finish a walk with credibility, rigour and trust all higher than you started.'},
 ]);
 const NEW_FN_IDS = NEW_FUNCTIONS.map(f=>f.id);
@@ -65,6 +54,13 @@ export function fresh(guide){
 }
 
 let state = {S:fresh(), J:loadJournal(), settings:loadSettings(), toasts:[], popups:[], spot:[], sfx:[]};
+/* v8: a new player meets the introduction first. Anyone with progress from before v8 goes straight to
+   the home screen, where "How it works" opens it. */
+export function isNewPlayer(J){
+  return !J.profile.role && !J.profile.xp && !J.walks.length && !Object.keys(J.maps).length && !Object.keys(J.progress).length;
+}
+/* Opening a save link skips the introduction: the player has played before. */
+if(!state.J.profile.seen.intro && isNewPlayer(state.J) && !saveCodeInAddress()) state.S.view = 'intro';
 setSound(state.settings.sound, state.settings.volume);
 const listeners = new Set();
 let uid = 0;
@@ -85,7 +81,7 @@ export function update(fn){
   const prev = state;
   state = produce(state, fn);
   if(needsSave(prev.S)) state = produce(state, d=>{ if(d.S.mode==='guided') saveWalk(d); else saveOwn(d); });
-  if(state.J!==prev.J) write(JKEY, JSON.stringify(state.J));
+  if(state.J!==prev.J) saveJournal(state.J);
   if(state.settings!==prev.settings) write(SKEY, JSON.stringify(state.settings));
   if(state.S.guide!==prev.S.guide) write(GKEY, state.S.guide);
   if(state.sfx.length){
@@ -107,7 +103,7 @@ export function navigate(fn){
   run();
 }
 
-/* ---------- activity clock for the field guide ---------- */
+/* ---------- activity clock for hints ---------- */
 export const activity = {last:Date.now()};
 export function touch(){ activity.last = Date.now(); }
 
@@ -146,7 +142,7 @@ function collect(d, id){
   if(!id || d.J.profile.codex[id]) return;
   d.J.profile.codex[id] = Date.now();
   if(!d.S.walk.reports.includes(id)) d.S.walk.reports.push(id);
-  gain(d, XP.report, 'Field report');
+  gain(d, XP.report, 'Landmark case');
   // the case is already on screen where it was met (the reveal or the complication), so no spotlight:
   // it is counted as new on the Library button until the player opens the library
   if(!d.J.profile.unseen.reports.includes(id)) d.J.profile.unseen.reports.push(id);
@@ -220,10 +216,44 @@ export const actions = {
     });
   },
   askRole(next){ navigate(d=>{ d.S.next = next || null; d.S.prevView = d.S.view; d.S.view = 'role'; }); },
+  /* v8: the introduction, and where it leads. */
+  introOpen(){ navigate(d=>{ d.S.prevView = d.S.view; d.S.view = 'intro'; }); },
+  introDone(next){
+    update(d=>{ d.J.profile.seen.intro = true; });
+    if(next==='guided') actions.startGuided();
+    else if(next==='own') actions.startOwn();
+    else actions.home();
+  },
+  /* ---------- v8: taking progress to another browser ---------- */
+  saveOpen(){ update(d=>{ d.S.modal = {type:'save'}; sfx(d, 'page'); }); },
+  saveDone(kind){ update(d=>{ d.J.profile.lastSave = Date.now(); d.J.profile.lastSaveKind = kind; sfx(d, 'xp'); }); },
+  restoreOpen(error){ update(d=>{ d.S.modal = {type:'restore', error:error || null}; sfx(d, 'page'); }); },
+  /* A save arrived from a link or a file. An empty browser takes it at once; one with progress asks first. */
+  restoreArrive(env){
+    if(isNewPlayer(state.J)) return actions.restoreApply(env);
+    update(d=>{ d.S.modal = {type:'restore-confirm', env}; });
+  },
+  restoreApply(env){
+    const e = env || (state.S.modal && state.S.modal.env); if(!e) return;
+    navigate(d=>{
+      // a fresh copy: a save that waited in the confirmation dialog is frozen with the rest of the state
+      const J = JSON.parse(JSON.stringify(e.J)); J.profile.seen.intro = true; d.J = J; resetTo(d);
+      const n = workItems(d.J).length;
+      toast(d, 'Welcome back', `Your progress is here: ${rankOf(d.J.profile.xp).name}, with ${n} ${n===1 ? 'walk or map' : 'walks and maps'}.`, 'flag');
+      sfx(d, 'levelup');
+    });
+  },
+  /* A file from "Save progress" or "Save map file". Returns a message if it cannot be opened. */
+  openSaveFile(text){
+    let f; try{ f = readSaveFile(text); }catch(e){ return saveError(e); }
+    update(d=>{ d.S.modal = null; });
+    if(f.kind==='map') actions.openMapFile(f.text); else actions.restoreArrive(f);
+    return null;
+  },
   clearAsk(){ update(d=>{ d.S.confirmClear = true; }); },
   clearNo(){ update(d=>{ d.S.confirmClear = false; }); },
   clearYes(){
-    try{ localStorage.removeItem(JKEY); OLD_KEYS.forEach(k=>localStorage.removeItem(k)); }catch(e){}
+    clearJournal();
     update(d=>{ d.J = blankJournal(); d.S.confirmClear = false; toast(d, 'Cleared', 'Your marks, walks, maps and progress are gone from this browser.', 'trash'); });
   },
 
@@ -367,9 +397,9 @@ export const actions = {
       if(r){ a.report = r.id; collect(d, r.id); }
     });
   },
-  dig(){ update(d=>{ const st = d.S.steps[d.S.cur]; if(d.S.dug[st.id]) return; d.S.dug[st.id] = true; gain(d, XP.dig, 'Heard from the floor'); sfx(d, 'page'); }); },
+  dig(){ update(d=>{ const st = d.S.steps[d.S.cur]; if(d.S.dug[st.id]) return; d.S.dug[st.id] = true; gain(d, XP.dig, 'Heard from the team'); sfx(d, 'page'); }); },
   seeReport(id){ update(d=>{ collect(d, id); d.S.modal = {type:'report', id}; sfx(d, 'page'); }); },
-  /* Reading from the library shows a case without collecting it: cases are collected in the field. */
+  /* Reading from the library shows a case without collecting it: cases are collected on walks. */
   peekReport(id){ update(d=>{ d.S.modal = {type:'report', id}; sfx(d, 'page'); }); },
   nextStep(){
     const go = ()=>navigate(d=>{
@@ -408,7 +438,7 @@ export const actions = {
   complContinue(){ update(d=>{ d.S.modal = null; }); actions.nextStep(); },
   closeModal(){ update(d=>{ d.S.modal = null; }); },
 
-  /* ---------- field guide ---------- */
+  /* ---------- hints ---------- */
   guideToggle(){ update(d=>{ d.S.gui.open = !d.S.gui.open; if(d.S.gui.open) d.S.gui.tier = 1; sfx(d, 'tap'); }); },
   guideClose(){ update(d=>{ d.S.gui.open = false; }); },
   guideMore(){ update(d=>{ d.S.gui.tier = 2; sfx(d, 'xp'); }); },
@@ -493,7 +523,7 @@ function finishGuided(d){
   gain(d, XP.walk, 'Walk complete');
   P.walks++;
   const agree = steps.filter(st=>S.ans[st.id].band===expertBand(st)).length;
-  d.J.walks.unshift({proc:exp.name, summary:`Matched the field’s LLM call on ${agree} of ${steps.length} steps.`, xp:w.xp, when:Date.now(),
+  d.J.walks.unshift({proc:exp.name, summary:`Matched the Guide’s LLM call on ${agree} of ${steps.length} steps.`, xp:w.xp, when:Date.now(),
     procId:S.procId, ans:S.ans, dug:S.dug, walk:w, compl:{fired:S.compl.fired, answers:S.compl.answers, flags:S.compl.flags || []}});
   delete d.J.progress[S.procId];
   d.J.walks = d.J.walks.slice(0,8);

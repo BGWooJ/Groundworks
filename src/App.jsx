@@ -1,7 +1,10 @@
 import {useEffect, useRef} from 'react';
 import {LazyMotion, MotionConfig} from 'motion/react';
 import {useGame, actions, getState, activity, touch} from './game/store.js';
+import {saveCodeInAddress, clearAddress, unpackJournal, saveError} from './game/storage.js';
 import Topbar from './components/Topbar.jsx';
+import Stages from './components/Stages.jsx';
+import Intro from './views/Intro.jsx';
 import {Toasts, Popups, Modal, Spotlight} from './components/Feedback.jsx';
 import Maps from './views/Maps.jsx';
 import Home from './views/Home.jsx';
@@ -16,7 +19,7 @@ import Library from './views/Library.jsx';
 
 const loadMotion = ()=>import('./motionFeatures.js').then(mod=>mod.default);
 
-const VIEWS = {home:Home, role:Role, 'own-setup':OwnSetup, terrain:Terrain, reveal:Reveal, pick:Pick, map:MapView,
+const VIEWS = {home:Home, intro:Intro, role:Role, 'own-setup':OwnSetup, terrain:Terrain, reveal:Reveal, pick:Pick, map:MapView,
   step:Step, finished:Finished, export:Export, character:Character, library:Library, maps:Maps};
 
 export default function App(){
@@ -34,7 +37,22 @@ export default function App(){
     if(h && view!=='home'){ h.setAttribute('tabindex','-1'); h.focus({preventScroll:true}); }
   }, [key, view]);
 
-  /* The field guide opens on its own if you stall, when you asked it to. */
+  /* v8: opened from a save link. The progress travels after "#", so it never reaches a server; it is
+     read once, then cleared from the address bar so a reload or a bookmark does not offer it again. */
+  useEffect(()=>{
+    const take = ()=>{
+      const code = saveCodeInAddress(); if(!code) return;
+      clearAddress();
+      // a link that arrived cut short has lost its code entirely: that is damage, not the wrong kind of link
+      unpackJournal(code).then(env=>actions.restoreArrive(env), e=>actions.restoreOpen(saveError(e.message==='no-code' ? new Error('damaged') : e)));
+    };
+    take();
+    // a save link pasted into a tab where the game is already open only changes the part after "#"
+    window.addEventListener('hashchange', take);
+    return ()=>window.removeEventListener('hashchange', take);
+  }, []);
+
+  /* The hint opens on its own if you stall, when you asked it to. */
   useEffect(()=>{
     const t = setInterval(()=>{
       const S = getState().S;
@@ -52,6 +70,7 @@ export default function App(){
   return <MotionConfig reducedMotion="user"><LazyMotion features={loadMotion} strict><div className={'app v-' + view}>
     <a className="skip" href="#main">Skip to content</a>
     <Topbar/>
+    <Stages/>
     <main className={view==='home' ? 'main home' : 'main'} id="main"><View/></main>
     <Toasts/><Popups/><Spotlight/><Modal/>
   </div></LazyMotion></MotionConfig>;

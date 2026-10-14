@@ -1,7 +1,31 @@
-/* Small shared pieces: icons, illustrations, emphasis, chips, emblems, meters. */
+/* Small shared pieces: icons, illustrations, emphasis, chips, emblems, meters, plain-language terms. */
+import {useState, useEffect, useRef, useId} from 'react';
 import {icon} from '../art/icons.js';
 import {ILLUS} from '../art/illustrations.js';
 import {bandName, VERDICTS} from '../engine/engine.js';
+import {GLOSSARY} from '../content/glossary.js';
+
+/* v8: a small "What's this?" button that opens a plain-language note under it. Closes on Escape, on a
+   second press, or on a press anywhere else. The note keeps inside the screen on a phone. */
+export function Term({id, children}){
+  const g = GLOSSARY[id], [open, setOpen] = useState(false), [right, setRight] = useState(false);
+  const ref = useRef(null), noteId = useId();
+  useEffect(()=>{
+    if(!open) return;
+    const r = ref.current && ref.current.getBoundingClientRect();
+    setRight(!!r && r.left + 320 > window.innerWidth - 16);
+    const away = e=>{ if(ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const esc = e=>{ if(e.key==='Escape'){ e.stopPropagation(); setOpen(false); ref.current && ref.current.querySelector('button').focus(); } };
+    document.addEventListener('pointerdown', away); document.addEventListener('keydown', esc, true);
+    return ()=>{ document.removeEventListener('pointerdown', away); document.removeEventListener('keydown', esc, true); };
+  }, [open]);
+  if(!g) return children || null;
+  return <span className="term" ref={ref}>
+    <button type="button" className="termbtn" aria-expanded={open} aria-controls={noteId} onClick={()=>setOpen(!open)}>
+      {children || g.ask}<span className="tq" aria-hidden="true">?</span></button>
+    {open && <span className={'termnote' + (right ? ' right' : '')} id={noteId} role="note">{g.text}</span>}
+  </span>;
+}
 
 export function Icon({name, className}){
   return <span className={'icw ' + (className||'')} aria-hidden="true" dangerouslySetInnerHTML={{__html:icon(name)}}/>;
