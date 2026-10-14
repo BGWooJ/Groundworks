@@ -249,3 +249,21 @@ screen readers, and stays smooth on modest hardware. Decisions and fixes along t
 - **Checked by:** unit tests for the suggestion, scoring, comparison, complication and route summary
   (`tests/v8.test.js`), and browser checks for the screen, the comparison, the Builder default and
   phone layout (`scripts/browser-check-v8.cjs`).
+
+**Phase 6, polish: done.** The findings, measurements and what changed are in `docs/review-v8.md`. In short:
+- **Speed:** on a slow phone connection the first screen is ready in 2.2 s instead of 2.5 s, a loading
+  screen shows from the first moment, and the later screens load while the player reads the first.
+- **Motion:** progress bars and pulses no longer resize or repaint the page on every frame. A check
+  times each tap's response and each transition's frames on a slowed phone, and confirms nothing moves
+  with reduced motion on.
+- **Accessibility:** every main screen, at desktop and phone size, passes the WCAG 2.2 AA rules in
+  axe-core. The changes:
+  - brass behind white text is darker, for contrast;
+  - buttons say what they show;
+  - dialogs keep and return focus;
+  - headings are in order.
+- **Differs from the plan:**
+  - The zoom between map levels takes 550 ms, not 800 ms, because it tested smooth and felt more
+    responsive.
+  - Loading each process's step text on demand would halve the first download. It was left as an open
+    question, because it changes how content reaches every screen.

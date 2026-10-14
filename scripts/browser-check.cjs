@@ -100,7 +100,7 @@ async function walkStep(p){ await p.waitForSelector('.question .token'); await a
   const ctx2 = await b.newContext({viewport:{width:390,height:844}}); const q = await ctx2.newPage();
   q.on('pageerror', e=>errors.push('phone: '+e.message));
   await q.goto(BASE); await wait(500);
-  await q.click('button[aria-label^="My maps"]'); await wait(400);
+  await q.click('.tbtn[data-tb="maps"]'); await wait(400);
   await q.click('text=Open saved progress'); await wait(400);
   await q.setInputFiles('.savedlg input[type=file]', path); await wait(900);
   g = await q.evaluate(()=>({view:document.querySelector('.app').className, h:document.querySelector('.tb-name') ? '' : '', done:document.querySelectorAll('.mcard.done').length}));

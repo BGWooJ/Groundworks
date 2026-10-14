@@ -73,7 +73,7 @@ export function Emblem({verdict, size}){
 
 export function Meter({value, max, label, tone}){
   const p = Math.max(0, Math.min(100, Math.round((value/(max||1))*100)));
-  return <span className={`meter ${tone?'t-'+tone:''}`} role="meter" aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} aria-label={label}><i style={{width:p+'%'}}/></span>;
+  return <span className={`meter ${tone?'t-'+tone:''}`} role="meter" aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} aria-label={label}><i style={{'--p':p+'%'}}/></span>;
 }
 
 export function Stars({n, of}){

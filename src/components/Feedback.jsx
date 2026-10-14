@@ -32,7 +32,21 @@ function Popup({p}){
 
 export function Modal(){
   const M = useGame(s=>s.S.modal);
-  const card = useRef(null);
+  const card = useRef(null), opener = useRef(null), open = !!M;
+  /* v8: while a dialog is open, the page behind it is inert: Tab, clicks and screen readers stay in the
+     dialog. When it closes, focus goes back to whatever opened it, if that is still on screen (a new
+     screen focuses its own heading instead). */
+  useEffect(()=>{
+    if(!open) return;
+    opener.current = document.activeElement;
+    const behind = [...document.querySelectorAll('.app > :not(.modal)')];
+    behind.forEach(el=>{ el.inert = true; });
+    return ()=>{
+      behind.forEach(el=>{ el.inert = false; });
+      const o = opener.current; opener.current = null;
+      if(o && o.isConnected && o.getClientRects().length && o!==document.body) o.focus({preventScroll:true});
+    };
+  }, [open]);
   useEffect(()=>{
     if(!M || !card.current) return;
     const f = card.current.querySelector('.choice, [data-autofocus]');
@@ -43,6 +57,15 @@ export function Modal(){
     const k = e=>{ if(e.key==='Escape') M.type==='compl' ? actions.complContinue() : actions.closeModal(); };
     document.addEventListener('keydown', k); return ()=>document.removeEventListener('keydown', k);
   }, [M]);
+  /* Tab from the last control comes back to the first, and Shift+Tab from the first goes to the last. */
+  const wrapTab = e=>{
+    if(e.key!=='Tab' || !card.current) return;
+    const f = [...card.current.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])')].filter(x=>x.getClientRects().length);
+    if(!f.length) return;
+    const first = f[0], last = f[f.length - 1], at = document.activeElement;
+    if(e.shiftKey && (at===first || !card.current.contains(at))){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey && (at===last || !card.current.contains(at))){ e.preventDefault(); first.focus(); }
+  };
   const reduce = useReducedMotion();
   let body = null, cls = '';
   if(M && M.type==='compl') { body = <Complication M={M}/>; cls = 'encounter'; }
@@ -52,7 +75,7 @@ export function Modal(){
   else if(M && M.type==='restore-confirm') { body = <RestoreConfirm M={M}/>; cls = 'savemodal'; }
   const dy = reduce ? 0 : 24;
   return <AnimatePresence>{M && <m.div key="modal" className="modal" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration: reduce ? 0 : .18}}>
-    <m.div className={'dispatch ' + cls} ref={card} role="dialog" aria-modal="true" aria-labelledby="dlgTitle"
+    <m.div className={'dispatch ' + cls} ref={card} role="dialog" aria-modal="true" aria-labelledby="dlgTitle" onKeyDown={wrapTab}
       initial={{opacity:0, y:dy, scale:reduce?1:.96}} animate={{opacity:1, y:0, scale:1}} exit={{opacity:0, y:dy/2, scale:reduce?1:.98}}
       transition={{type:'spring', stiffness:380, damping:30}}>{body}</m.div>
   </m.div>}</AnimatePresence>;
@@ -136,7 +159,7 @@ function SpotCard({item, left}){
   const go = ()=>{ actions.spotDone(item.id);
     if(item.kind==='report') actions.peekReport(item.reportId); else actions.view('character'); };
   const pause = ()=>setPaused(true), resume = ()=>setPaused(false);
-  return <m.aside className={`spot k-${item.kind}`} role="status" aria-live="polite"
+  return <m.div className={`spot k-${item.kind}`} role="status" aria-live="polite"
     onMouseEnter={pause} onMouseLeave={resume} onFocus={pause} onBlur={resume}
     initial={{opacity:0, y:reduce?0:-24, scale:reduce?1:.94}} animate={{opacity:1, y:0, scale:1}} exit={{opacity:0}}
     transition={{type:'spring', stiffness:320, damping:24}}>
@@ -152,5 +175,5 @@ function SpotCard({item, left}){
       </div>
     </div>
     <span className={'spot-timer' + (paused?' paused':'')} style={{'--dwell': dwell+'ms'}} aria-hidden="true"><i/></span>
-  </m.aside>;
+  </m.div>;
 }

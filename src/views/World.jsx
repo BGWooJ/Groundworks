@@ -103,7 +103,7 @@ function WorldMap({stage}){
         <g transform="translate(1440,880)" className="w-compass" aria-hidden="true"><circle r="34"/><path d="M0 -44 L8 0 L0 44 L-8 0Z"/><text y="-50" textAnchor="middle">N</text></g>
         {FUNCTIONS.map(f=>{ const L = LANDMARKS[f.id], heat = heatOf(f), areas = areasOf(f.id).length;
           return <g key={f.id} className={'lm heat-' + heat} transform={`translate(${L.x},${L.y})`} role="button" tabIndex={0}
-            aria-label={`${f.name}: ${plural(nProc(f), 'process', 'processes')} in ${plural(areas, 'work area')}. Go inside.`}
+            aria-label={`${L.label}, ${plural(nProc(f), 'process', 'processes')} in ${plural(areas, 'work area')}.${L.label!==f.name ? ` Full name: ${f.name}.` : ''} Go inside.`}
             onClick={e=>enter(f.id, e.currentTarget)} onKeyDown={e=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); enter(f.id, e.currentTarget); } }}
             onMouseEnter={e=>show(f.id, e.currentTarget.querySelector('.lm-ring'))} onMouseLeave={()=>setCard(null)}
             onFocus={e=>show(f.id, e.currentTarget.querySelector('.lm-ring'))} onBlur={()=>setCard(null)}>
@@ -112,7 +112,7 @@ function WorldMap({stage}){
               <circle className="lm-ring" r={26}/>
               <g className="lm-ico" transform="translate(-13,-13) scale(1.08)" dangerouslySetInnerHTML={{__html:iconInner(f.icon)}}/>
             </g>
-            <g className="lm-t"><text className="lm-name" y={52} textAnchor="middle">{L.label}</text>
+            <g className="lm-t"><text className="lm-name" y={52} textAnchor="middle">{L.label}</text>{' '}
               <text className="lm-more" y={72} textAnchor="middle">{plural(nProc(f), 'process', 'processes')}</text></g>
           </g>; })}
       </g>
@@ -146,12 +146,12 @@ function DivisionScene({fn, stage}){
     <aside className="dsc-side">
       <span className="dsc-ill"><Art kind="dept" id={fn.id}/></span>
       <p className="dsc-brief"><Emph text={fn.brief}/></p>
-      <h3 className="h4">Signals</h3>
+      <h2 className="h4">Signals</h2>
       <ul className="signals">{fn.signals.map((sg,i)=><li key={i} className={'sig-'+sg.s}><span className="sig"/><span><Emph text={sg.t}/></span></li>)}</ul>
       <p className="muted small">Signals are the evidence: volume, repetition and time someone has measured. Strong ones are marked in brass.</p>
     </aside>
     <section className="dsc-plan" aria-labelledby="zones-h">
-      <h3 id="zones-h" className="h4">Choose a work area<span className="zcount">{plural(areas.length, 'area')}</span></h3>
+      <h2 id="zones-h" className="h4">Choose a work area<span className="zcount">{plural(areas.length, 'area')}</span></h2>
       <div className={'zones z' + areas.length}>{areas.map(a=>{ const pinned = a.processes.filter(p=>route.includes(p)).length;
         return <button key={a.id} className="zone" onClick={e=>actions.worldArea(a.id, originOf(e.currentTarget, stage.current))}>
           <span className="z-ico"><Icon name={a.icon}/></span>
