@@ -18,7 +18,7 @@ import {NEW_FUNCTIONS} from '../content/districts.js';
 import {FUNCTIONS} from '../content/meridian.js';
 import {XP, rankOf, blankStats, applyStats, roleOf} from './rpg.js';
 import {QUESTIONS, SCORED, asks, pruneAnswers, answered, stepDone, nextUnanswered, markOf, readSteps, nextOpenIndex, stepEval,
-  familyOfCap, whoName, teamOf, shuffle, buildExport, lppPrompt, csvOf, slug, heatOf} from './flow.js';
+  familyOfCap, whoName, teamOf, shuffle, buildExport, lppPrompt, csvOf, slug, heatOf, QUICK_CTX, giveFacts, suggestCapFor, quickCalled, scoredQs} from './flow.js';
 import {play, setSound} from '../audio/sound.js';
 
 /* ---------- persistence (v8: through storage.js) ---------- */
@@ -44,6 +44,7 @@ export function fresh(guide){
   return {
     mode:null, view:'home', next:null, guide:guide || read(GKEY) || 'stall',
     world:{level:0, fnId:null, areaId:null, list:false, dir:1, origins:{}, hint:false}, procId:null,
+    read:null, ctx:null, qopen:{},
     own:null, steps:[], ans:{}, cur:0, q:0,
     dug:{}, compl:{fired:[], answers:[]}, modal:null,
     whatif:{double:false, digital:false, devs:false},
@@ -164,7 +165,7 @@ function saveOwn(d){
 }
 function saveWalk(d){
   const S = d.S;
-  d.J.progress[S.procId] = {procId:S.procId, ans:S.ans, dug:S.dug, cur:S.cur, walk:S.walk,
+  d.J.progress[S.procId] = {procId:S.procId, ans:S.ans, dug:S.dug, cur:S.cur, walk:S.walk, read:S.read, ctx:S.ctx,
     // a complication still open when the player leaves is offered again, not counted as spent
     compl:{fired:S.compl.fired.slice(0, S.compl.answers.length), answers:S.compl.answers, flags:S.compl.flags || []},
     updated:Date.now()};
@@ -176,7 +177,11 @@ function restoreWalk(d, pid, rec, extra){
   S.compl = {fired:(rec.compl && rec.compl.fired) || [], answers:(rec.compl && rec.compl.answers) || [], flags:(rec.compl && rec.compl.flags) || []};
   S.walk = Object.assign({start:null, stats:null, xp:0, reports:[], marks:[], ranks:[]}, rec.walk || {});
   S.cur = rec.cur || 0;
+  S.read = rec.read || (rec.ans && Object.keys(rec.ans).length ? 'full' : defaultRead(d));   // walks from before v8 were full reads
+  S.ctx = Object.assign({}, QUICK_CTX, d.J.profile.quickCtx || {}, rec.ctx || {});
 }
+/* v8: the quick read is the default, except for the Builder lens, who sees every question. */
+function defaultRead(d){ return d.J.profile.role==='builder' ? 'full' : 'quick'; }
 function openStepIn(d, i){
   const S = d.S; S.cur = i; S.view = 'step';
   const st = S.steps[i], a = ansOf(S, st);
@@ -275,7 +280,9 @@ export const actions = {
   toWorld(){ navigate(d=>{ d.S.mode = 'guided'; d.S.view = 'terrain'; }); },
   /* From a walk back to the place in the world it belongs to. */
   worldAt(level, fnId, areaId){ navigate(d=>{ resetTo(d, {mode:'guided', view:'terrain'}); Object.assign(d.S.world, {level, fnId:fnId||null, areaId:areaId||null, dir:-1}); }); },
-  toPick(){ navigate(d=>{ d.S.view = 'pick'; }); },
+  toPick(){ navigate(d=>{ d.S.view = 'pick'; const r = d.J.route, run = d.J.routeRun;
+    // a route of two or more is compared at the end; a new set of processes starts a new comparison
+    if(r.length>=2 && !(run && run.pids.length===r.length && r.every(p=>run.pids.includes(p)))) d.J.routeRun = {pids:[...r], at:Date.now()}; }); },
   pickProc(pid){
     navigate(d=>{
       const saved = d.J.progress[pid];
@@ -283,7 +290,7 @@ export const actions = {
       // a fresh walk: nothing carries over from the screen it was started from (v8: the finished map
       // of the last process on a route, the world map, or the route itself)
       const e = getExpedition(pid); resetTo(d, {mode:'guided', view:'map'}); const S = d.S;
-      S.procId = pid; S.steps = e.steps;
+      S.procId = pid; S.steps = e.steps; S.read = defaultRead(d); S.ctx = Object.assign({}, QUICK_CTX, d.J.profile.quickCtx || {});
       S.walk = {start:Object.assign({}, d.J.profile.stats), stats:Object.assign({}, d.J.profile.stats), xp:0, reports:[], marks:[], ranks:[]};
       sfx(d, 'page');
     });
@@ -388,25 +395,44 @@ export const actions = {
       if(f && f.focus) f.focus({preventScroll:true});
     }, 260);
   },
-  reveal(){
+  reveal(){ update(d=>{ const S = d.S; S.q = -1; gain(d, revealStep(d, S.steps[S.cur]), 'Read compared'); sfx(d, 'reveal'); }); },
+  dig(i){ update(d=>{ const st = d.S.steps[i==null ? d.S.cur : i]; if(!st || d.S.dug[st.id]) return; d.S.dug[st.id] = true; gain(d, XP.dig, 'Heard from the team'); sfx(d, 'page'); }); },
+
+  /* ---------- v8: the quick read ---------- */
+  setRead(mode){
+    navigate(d=>{ const S = d.S; if(S.mode!=='guided') return; S.read = mode;
+      if(mode==='quick' && S.view==='step') S.view = 'quick';
+      else if(mode==='full' && S.view==='quick') S.view = 'map';
+      sfx(d, 'tap'); });
+  },
+  toQuick(){ navigate(d=>{ d.S.view = 'quick'; sfx(d, 'page'); }); },
+  quickCall(i, k, v){
+    touch();
     update(d=>{
-      const S = d.S, st = S.steps[S.cur], a = ansOf(S, st), P = d.J.profile;
-      a.revealed = true; S.q = -1;
-      let gained = 0;
-      SCORED.filter(q=>asks(q, a)).forEach(q=>{
-        const m = markOf(S, q, st, a[q.k]);
-        record(P.skills[q.k] || (P.skills[q.k] = {n:0, pts:0}), m);
-        gained += m==='match' ? XP.match : (m==='near' ? XP.near : 0);
-        if(q.k==='cap'){ const fam = familyOfCap(st.expertPick); if(fam) record(P.families[fam] || (P.families[fam] = {n:0, pts:0}), m); }
-      });
-      if(P.role==='practitioner') S.dug[st.id] = true;
-      sfx(d, 'reveal');
-      gain(d, gained, 'Read compared');
-      const r = reportFor({cap:st.expertPick, verdict:fieldVerdict(st), shape:st.expert.shape}, P.codex);
-      if(r){ a.report = r.id; collect(d, r.id); }
+      const S = d.S, st = S.steps[i], a = ansOf(S, st);
+      if(a.revealed) return;
+      giveFacts(a, st, S.ctx);
+      if(k==='cap'){ a.cap = v; a._capAuto = false; }
+      else {
+        a[k] = v;
+        // the capability follows the kind of work and the LLM call until the player picks one
+        if((k==='shape' || k==='band') && a.band && (a._capAuto!==false || !(QUESTIONS[5].opts(a).some(o=>o.id===a.cap)))){ a.cap = suggestCapFor(a); a._capAuto = true; }
+      }
+      pruneAnswers(a);
+      sfx(d, 'select');
     });
   },
-  dig(){ update(d=>{ const st = d.S.steps[d.S.cur]; if(d.S.dug[st.id]) return; d.S.dug[st.id] = true; gain(d, XP.dig, 'Heard from the team'); sfx(d, 'page'); }); },
+  quickCtx(k, v){ update(d=>{ d.S.ctx[k] = v; (d.J.profile.quickCtx = d.J.profile.quickCtx || {})[k] = v; sfx(d, 'tap'); }); },
+  quickOpen(i){ update(d=>{ d.S.qopen[i] = !d.S.qopen[i]; sfx(d, 'tap'); }); },
+  /* One comparison for the whole process, once every step has its calls. */
+  quickCompare(){
+    if(!state.S.steps.every(st=>quickCalled(state.S.ans[st.id]))) return;
+    update(d=>{
+      const S = d.S; let gained = 0;
+      S.steps.forEach(st=>{ const a = ansOf(S, st); if(a.revealed) return; giveFacts(a, st, S.ctx); gained += revealStep(d, st); });
+      S.q = -1; sfx(d, 'reveal'); gain(d, gained, 'Calls compared');
+    });
+  },
   seeReport(id){ update(d=>{ collect(d, id); d.S.modal = {type:'report', id}; sfx(d, 'page'); }); },
   /* Reading from the library shows a case without collecting it: cases are collected on walks. */
   peekReport(id){ update(d=>{ d.S.modal = {type:'report', id}; sfx(d, 'page'); }); },
@@ -420,7 +446,7 @@ export const actions = {
       else { openStepIn(d, n); sfx(d, 'page'); }
     });
     const S = state.S, readCount = readSteps(S).length;
-    if(S.mode==='guided' && readCount===2 && S.steps.length>=3 && fireComplication(0)) return;
+    if(S.mode==='guided' && S.read!=='quick' && readCount===2 && S.steps.length>=3 && fireComplication(0)) return;
     if(S.mode==='guided' && nextOpenIndex(S)==null && fireComplication(1)) return;
     go();
   },
@@ -492,10 +518,29 @@ export const actions = {
   sound(name){ play(name); },
 };
 
+/* Compare one step with the Guide: mastery for every call the player made, a landmark case where one
+   fits. Returns the experience earned. Shared by the full read (one step) and the quick read (all). */
+function revealStep(d, st){
+  const S = d.S, a = ansOf(S, st), P = d.J.profile;
+  a.revealed = true;
+  let gained = 0;
+  scoredQs(a).forEach(q=>{
+    const m = markOf(S, q, st, a[q.k]);
+    record(P.skills[q.k] || (P.skills[q.k] = {n:0, pts:0}), m);
+    gained += m==='match' ? XP.match : (m==='near' ? XP.near : 0);
+    if(q.k==='cap'){ const fam = familyOfCap(st.expertPick); if(fam) record(P.families[fam] || (P.families[fam] = {n:0, pts:0}), m); }
+  });
+  if(P.role==='practitioner') S.dug[st.id] = true;
+  const r = reportFor({cap:st.expertPick, verdict:fieldVerdict(st), shape:st.expert.shape}, P.codex);
+  if(r){ a.report = r.id; collect(d, r.id); }
+  return gained;
+}
+
 /* Draw a complication for the slot, preferring ones written for the player's lens. */
 function fireComplication(slotIdx){
   const S = state.S;
-  if(S.mode!=='guided' || S.compl.fired.length>slotIdx) return false;
+  // a full read meets one complication per slot; a quick read meets only the last slot's, once
+  if(S.mode!=='guided' || S.compl.fired.length>(S.read==='quick' ? 0 : slotIdx)) return false;
   const role = state.J.profile.role;
   const pool = ALL_EVENTS.filter(e=>SLOTS[slotIdx].includes(e.slot) && !S.compl.fired.includes(e.id));
   if(!pool.length) return false;
@@ -526,14 +571,15 @@ function finishGuided(d){
   if(steps.every(st=>S.ans[st.id].band===expertBand(st))) award(d, 'inagree');
   if(steps.every(st=>{ const x = S.ans[st.id]; return x.cap==='fix' ? st.expertPick==='fix' : x.auto===st.autoBest; })) award(d, 'steady');
   if(steps.every(st=>S.dug[st.id])) award(d, 'digger');
-  if(S.compl.answers.length>=2 && S.compl.answers.every(s=>s===2)) award(d, 'coolhead');
+  // a full read meets two complications and a quick read one; every one must get the strong answer
+  if(S.compl.answers.length>=(S.read==='quick' ? 1 : 2) && S.compl.answers.every(s=>s===2)) award(d, 'coolhead');
   const w = S.walk;
   if(w.start && w.stats && ['cred','rigor','trust'].every(k=>w.stats[k]>w.start[k])) award(d, 'standing');
   gain(d, XP.walk, 'Walk complete');
   P.walks++;
   const agree = steps.filter(st=>S.ans[st.id].band===expertBand(st)).length;
   d.J.walks.unshift({proc:exp.name, summary:`Matched the Guide’s LLM call on ${agree} of ${steps.length} steps.`, xp:w.xp, when:Date.now(),
-    procId:S.procId, ans:S.ans, dug:S.dug, walk:w, compl:{fired:S.compl.fired, answers:S.compl.answers, flags:S.compl.flags || []}});
+    procId:S.procId, ans:S.ans, dug:S.dug, walk:w, read:S.read, compl:{fired:S.compl.fired, answers:S.compl.answers, flags:S.compl.flags || []}});
   delete d.J.progress[S.procId];
   d.J.route = d.J.route.filter(pid=>pid!==S.procId);   // read: the next one on the route waits
   d.J.walks = d.J.walks.slice(0,8);

@@ -1,4 +1,4 @@
-# Groundwork v7: find where an LLM earns its keep
+# Groundwork v8: find where an LLM earns its keep
 
 Groundwork teaches one method: break a process into its steps, read each step for the kind of
 work it really is, and decide honestly whether it is an LLM's kind of work, a job where an LLM
@@ -11,7 +11,7 @@ departments in place. v7 makes work easy to find again, makes achievements visib
 choices first, checks that every option means something, and ends every map with a plan. See
 `docs/review-v6.md` and `docs/review-v7.md`.
 
-v8 is in progress (`docs/plan-v8.md`). Phase 1 is in: new players meet a three-card introduction
+v8 (`docs/plan-v8.md`) comes in six phases; the first five are in. Phase 1: new players meet a three-card introduction
 (what Meridian is, what they will do, what they get), a "you are here" strip names each stage of a
 walk or map, "What's an LLM?" and "Who is the Guide?" explain the two terms a newcomer meets cold,
 and the words are friendlier: **the Guide** (was "the field"), **landmark cases** and the **case
@@ -24,6 +24,12 @@ finished map, My maps) makes a **save link** that holds everything, compressed i
 link after "#", which browsers never send to the website, and a **save file** with the same contents.
 Opening the link in any browser brings everything back; a browser that already has progress shows
 both side by side and asks before replacing anything.
+
+Phases 3 to 5 are in as well. Meridian is now a map you move around, from the island to a division,
+then a work area, then its processes (**The world** below). 54 true-to-life processes join the
+original 38 (**The processes** below). And the **quick read** (below) is the new default way to read
+a process: the facts are given, you make three calls per step on one screen, and one comparison with
+the Guide comes at the end. A route of two or three processes ends with a comparison of where to start.
 
 ## The hypothesis behind the game
 
@@ -41,10 +47,11 @@ decorates is left out.
 
 **Explore Meridian.** A made-up reserve bank with 13 divisions, 38 work areas and 92 walkable
 processes (300 steps), drawn as a map you move around (see **The world** below). Go inside a division, then one
-of its work areas, and walk a process or pin up to three to your route; then read it step by step.
-After each read you compare with the Guide's view: which answers match, the verdict, notes from the
-team, and often a landmark case from the wider world. Two complications per walk
-test your judgment under pressure.
+of its work areas, and walk a process or pin up to three to your route. Read it with the quick read
+(three calls per step, one screen) or the full read (every question, step by step). Then compare with
+the Guide's view: which answers match, the verdict, notes from the team, and often a landmark case
+from the wider world. Complications test your judgment under pressure: one per step in a full read,
+one per process in a quick read.
 
 **Map your own work.** Start with the **charter**, four questions to answer before any tool,
 pilot or game: the challenge (as a hypothesis), what success looks like, whether your systems can
@@ -88,6 +95,33 @@ Meridian is an island of five regions, with each of the 13 divisions a landmark 
   small screens.
 - **Built with:** SVG and d3-zoom, with Motion for the zooms. No 3D: a flat map stays sharp at every
   zoom, keeps every division a real button, and runs smoothly on modest laptops and phones.
+
+## The quick read
+
+Most people reading a process want to know where AI could help, not to fill in ten questions per step
+(`src/views/QuickRead.jsx`). The quick read keeps the judgment and drops the form-filling.
+
+- **The facts are given:** how much of the work there is, what comes in, and what is at stake. They
+  come from the process's own profile, which is where the Guide takes them from. "About your
+  organisation" (where the work happens, who would build a tool, how sensitive the data is) is set
+  once and remembered for every quick read after.
+- **Three calls per step,** all on one screen:
+  1. What kind of work is it?
+  2. Is it an LLM's kind of work?
+  3. How much should it do on its own?
+
+  A capability is suggested from the first two calls and shown, and you can change it. "Fix the process
+  first" needs no autonomy call.
+- **One comparison:** **Compare with the Guide** opens once every step has its calls. A summary leads
+  ("You and the Guide agree on 7 of 10 calls"), then one row per step with its verdict, and the details
+  on tap. Only your own calls are scored: given facts, and a capability you left as suggested, earn and
+  cost nothing.
+- **How long it takes:** 9 to 15 taps for a process of three to five steps, and one complication
+  before the plan.
+- **A route:** when you read two or three processes from your route, the last finished map compares
+  them side by side and says which to start with.
+- **The full read** is one toggle away on the process screen, and the default for the Builder lens.
+  XP and mastery count from either. Walks saved before v8 resume as full reads.
 
 ## The RPG layer
 
@@ -183,6 +217,7 @@ LPP Plus, Copilot GCC, Copilot Studio, CodeHelper, No new tool) in `src/engine/t
 | `src/components/SaveDialogs.jsx` | v8: saving and opening progress, and the check before replacing it |
 | `src/views/Intro.jsx`, `src/components/Stages.jsx`, `src/content/glossary.js` | v8: the introduction, "you are here", and plain-language terms |
 | `src/views/World.jsx`, `src/content/world.js`, `src/content/areas.js` | v8: the world map, its geography, and the work areas |
+| `src/views/QuickRead.jsx` | v8: the quick read, its comparison, and the toggle between quick and full |
 | `src/views/Survey.jsx` | The ranking of every process ("How do they rank?") and your route |
 | `src/audio/sound.js` | Optional synthesised sound |
 | `src/motionFeatures.js` | Animation features for Motion, loaded after first paint |
@@ -246,7 +281,7 @@ npm run check      # content check with the verdict spread
 npm run audit      # exhaustive engine audit: verdicts, ties, overlaps, coverage, content integrity
 node scripts/audit-options.mjs   # does every answer matter, do questions make sense, are complications a real choice
 node scripts/browser-check.cjs   # the v7 fixes in Chromium (needs Playwright and a running preview)
-node scripts/browser-check-v8.cjs   # v8: introduction, terms, stages, new words; save links and files; the world map
+node scripts/browser-check-v8.cjs   # v8: introduction, terms, stages, new words; save links and files; the world map; the quick read
 npm run golden     # regenerate the pinned fixture after a deliberate scoring change
 npm run build      # static site in dist/
 ```

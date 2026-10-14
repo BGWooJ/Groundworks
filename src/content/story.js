@@ -250,7 +250,7 @@ const MARKS = [
   {id:'inagree',   icon:'check',     name:'In step with the Guide', d:'Match the Guide\u2019s LLM call on every step of a process.'},
   {id:'steady',    icon:'review',    name:'Measured autonomy',      d:'Match the Guide\u2019s autonomy on every step of a process.'},
   {id:'digger',    icon:'interview', name:'Every voice heard',      d:'Hear more from the team on every step of a process.'},
-  {id:'coolhead',  icon:'trust',     name:'Cool head',              d:'Give the strong answer to both complications in a walk.'},
+  {id:'coolhead',  icon:'trust',     name:'Cool head',              d:'Give the strong answer to every complication in a walk.'},
   {id:'ownmap',    icon:'doc',       name:'Your own ground',        d:'Map a process of your own.'},
   {id:'further',   icon:'spark',     name:'Taken further',          d:'Export a map or copy it for LPP.'},
 ];

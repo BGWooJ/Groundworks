@@ -228,3 +228,24 @@ screen readers, and stays smooth on modest hardware. Decisions and fixes along t
 - **A finding, not changed:** 26 of the original 126 Guide reads would draw a challenge if a player
   gave the same answers on a map of their own. Players never see challenges on Meridian, so it is
   reported by `scripts/check-guide-reads.mjs`, not enforced. None of the new reads draw one.
+
+**Phase 5, the quick read: done.** As planned, with these details settled while building it:
+- **What is scored:** only the calls a player makes. Given facts earn and cost nothing, and so does a
+  capability left as suggested. Picking one makes it count. Switching the LLM call re-suggests the
+  capability when the old pick no longer fits ("fix the process" is not an LLM capability).
+- **"About your organisation":** the three organisation answers are set once on the quick read screen
+  and remembered for later reads, as planned for "once per route", but also across routes.
+- **Complications:** a quick read meets one, after the comparison and before the plan. A full read still
+  meets one per step.
+- **Who gets which read:** quick by default, full for the Builder lens. A walk saved before v8 resumes
+  as a full read, so nobody loses answers already given.
+- **End of a route:** after the last process of a route of two or three, the finished map compares them
+  and names where to start, from each process's plan.
+- **Fixed while building it:**
+  - A quick read could fire two complications, one per step, because the trigger counted steps. It now
+    fires once.
+  - The quick read's footer reused the class of the progress bar and inherited its fixed width. It has
+    its own class now.
+- **Checked by:** unit tests for the suggestion, scoring, comparison, complication and route summary
+  (`tests/v8.test.js`), and browser checks for the screen, the comparison, the Builder default and
+  phone layout (`scripts/browser-check-v8.cjs`).

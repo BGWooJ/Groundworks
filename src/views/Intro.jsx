@@ -30,7 +30,7 @@ const CARDS = [
      <World/></>},
   {k:'calls', h:'What you will do',
    body:()=><>
-     <p>Pick one piece of work, such as answering staff questions about benefits or checking supplier invoices. Look at it one step at a time, and for each step make the call:</p>
+     <p>Pick a piece of work, such as answering staff questions about benefits or checking supplier invoices. The facts of each step are given; for each step, you make the call:</p>
      <ul className="icalls">{CALLS.map(c=><li key={c.icon}><span className="ic"><Icon name={c.icon}/></span>{c.t}</li>)}</ul>
      <p className="small">The AI in most of these calls is the kind behind chat tools such as Copilot. <Term id="llm"/></p></>},
   {k:'plan', h:'Compare, then plan',
@@ -38,7 +38,7 @@ const CARDS = [
      <p>After each step, you compare your calls with the Guide’s: an experienced surveyor who has walked every process with the people who do the work. Where you differ, notes from the team explain why.</p>
      <p>You finish with a plan for the process: what to fix first, what to try, and what to leave alone.</p>
      <ol className="iphases">{PHASES.map((p,i)=><li key={p.id}><span>{i+1}</span>{p.name}</li>)}</ol>
-     <p className="ifacts"><Icon name="flag"/>About 15 minutes for one process. Everything saves as you go, and a save link takes it to any browser.</p></>},
+     <p className="ifacts"><Icon name="flag"/>About 5 minutes a process with the quick read. Everything saves as you go, and a save link takes it to any browser.</p></>},
 ];
 
 export default function Intro(){

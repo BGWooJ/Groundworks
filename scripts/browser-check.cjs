@@ -23,6 +23,7 @@ async function walkStep(p){ await p.waitForSelector('.question .token'); await a
 
   /* ---------- 2. A walk in progress can be picked up again ---------- */
   await p.click('.site:has-text("Pre-meeting briefing cycle") >> text=Walk this process'); await p.waitForSelector('button.mcard.cur');
+  await p.click('.readtoggle >> text=Full read'); await wait(300);   // v8: these checks read every question
   await p.click('button.mcard.cur'); await walkStep(p);
   await p.click('.brand'); await wait(600);
   g = await p.evaluate(()=>{ const r=document.querySelector('.resume-item'); const b=r&&r.getBoundingClientRect(); return {text:r&&r.textContent, top:b&&Math.round(b.top), vh:innerHeight}; });

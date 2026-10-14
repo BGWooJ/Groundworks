@@ -13,7 +13,7 @@ export default function Topbar(){
   const fresh = u.marks.length + (u.rank ? 1 : 0);
   const any = workItems(J).length>0, due = any && unsaved(J);
   const name = S.mode==='own' ? (S.own && S.own.process) : (S.procId ? getExpedition(S.procId).name : 'Meridian Reserve Bank');
-  const showProg = S.steps.length && ['map','step','finished','export'].includes(S.view);
+  const showProg = S.steps.length && ['map','step','quick','finished','export'].includes(S.view);
   const n = showProg ? readSteps(S).length : 0;
   const r = rankOf(P.xp), role = roleOf(P.role);
   return <header className="topbar">

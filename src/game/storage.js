@@ -42,6 +42,7 @@ export function normalJournal(raw){
   out.walks = Array.isArray(out.walks) ? out.walks.filter(isObj) : [];
   out.maps = isObj(out.maps) ? Object.fromEntries(Object.entries(out.maps).filter(([,m])=>isObj(m) && Array.isArray(m.steps) && m.steps.every(isObj))) : {};
   out.route = Array.isArray(out.route) ? out.route.filter(x=>typeof x==='string').slice(0,3) : [];
+  out.routeRun = isObj(out.routeRun) && Array.isArray(out.routeRun.pids) ? {pids:out.routeRun.pids.filter(x=>typeof x==='string'), at:+out.routeRun.at || 0} : null;
   out.progress = isObj(out.progress) ? Object.fromEntries(Object.entries(out.progress).filter(([,p])=>isObj(p) && typeof p.procId==='string')) : {};
   return out;
 }

@@ -233,3 +233,79 @@ describe('more ground', ()=>{
     }));
   });
 });
+
+/* ---------- phase 5: the quick read ---------- */
+describe('the quick read', ()=>{
+  const call = (actions, getState, pick)=>getState().S.steps.forEach((st, i)=>{
+    const p = pick(st); actions.quickCall(i, 'shape', p.shape); actions.quickCall(i, 'band', p.band); if(p.cap) actions.quickCall(i, 'cap', p.cap); if(p.auto) actions.quickCall(i, 'auto', p.auto); });
+  it('is the default except for the Builder lens, and old walks resume as full reads', async ()=>{
+    let {store} = await freshStore();
+    store.actions.chooseRole('steward'); store.actions.startGuided(); store.actions.pickProc('ap');
+    expect(store.getState().S.read).toBe('quick');
+    ({store} = await freshStore());
+    store.actions.chooseRole('builder'); store.actions.startGuided(); store.actions.pickProc('ap');
+    expect(store.getState().S.read).toBe('full');
+    ({store} = await freshStore({gw_journal_v4:JSON.stringify({marks:{}, walks:[], maps:{}, profile:{role:'steward', xp:10},
+      progress:{ap:{procId:'ap', ans:{'ap-1':{shape:'extract'}}, dug:{}, cur:0, updated:1}}})}));
+    store.actions.resumeWalk('ap');
+    expect(store.getState().S.read).toBe('full');
+  });
+  it('gives the facts, suggests a capability, and scores only the calls made', async ()=>{
+    const {store} = await freshStore();
+    const {actions, getState} = store;
+    actions.chooseRole('steward'); actions.startGuided(); actions.pickProc('ap');
+    const st = getState().S.steps[0];
+    actions.quickCall(0, 'shape', 'extract'); actions.quickCall(0, 'band', 'core');
+    let a = getState().S.ans[st.id];
+    expect(a).toMatchObject({input:st.expert.input, rep:st.expert.rep, stakes:st.expert.stakes, cap:'extract', _capAuto:true, where:'office', builder:'unsure', sens:'internal'});
+    actions.quickCall(0, 'band', 'none');
+    expect(getState().S.ans[st.id].cap).toBe('rules');            // follows the LLM call until the player picks one
+    actions.quickCall(0, 'cap', 'fix');
+    a = getState().S.ans[st.id];
+    expect(a._capAuto).toBe(false); expect(a.auto).toBeUndefined();  // a process fix has no autonomy call
+    const {scoredQs, quickCalled} = await import('../src/game/flow.js');
+    expect(quickCalled(a)).toBe(true);
+    expect(scoredQs(a).map(q=>q.k)).toEqual(['shape','band','cap']);  // the player chose the capability, so it counts
+    actions.quickCall(0, 'band', 'core'); actions.quickCall(0, 'auto', 'review');
+    a = getState().S.ans[st.id];
+    expect(a._capAuto).toBe(true); expect(a.cap).not.toBe('fix');      // a fix is not an LLM capability, so the suggestion returns
+    expect(scoredQs(a).map(q=>q.k)).toEqual(['shape','band','auto']);
+    actions.quickCall(0, 'cap', 'summarize');
+    expect(scoredQs(getState().S.ans[st.id]).map(q=>q.k)).toEqual(['shape','band','cap','auto']);
+  });
+  it('compares the whole process at once, then meets one complication before the plan', async ()=>{
+    const {store} = await freshStore();
+    const {actions, getState} = store;
+    actions.chooseRole('steward'); actions.startGuided(); actions.pickProc('ap');
+    actions.quickCompare();
+    expect(getState().S.steps.some(st=>(getState().S.ans[st.id]||{}).revealed)).toBe(false);   // not until every step has its calls
+    call(actions, getState, ()=>({shape:'extract', band:'core', auto:'review'}));
+    actions.quickCompare();
+    const S = getState().S;
+    expect(S.steps.every(st=>S.ans[st.id].revealed)).toBe(true);
+    const P = getState().J.profile;
+    expect(P.skills.shape.n).toBe(S.steps.length); expect(P.skills.input).toBeUndefined(); expect(P.skills.cap).toBeUndefined();
+    actions.nextStep();
+    expect(getState().S.modal && getState().S.modal.type).toBe('compl');
+    actions.complChoose(0); actions.complContinue();
+    expect(getState().S.compl.fired.length).toBe(1);
+    expect(getState().S.view).toBe('finished');
+    expect(getState().J.walks[0]).toMatchObject({procId:'ap', read:'quick'});
+  });
+  it('compares a finished route and says where to start', async ()=>{
+    const {store} = await freshStore();
+    const {actions, getState} = store;
+    const {routeSummary} = await import('../src/game/flow.js');
+    actions.chooseRole('steward'); actions.routeToggle('ap'); actions.routeToggle('ratevote'); actions.toPick();
+    expect(getState().J.routeRun.pids).toEqual(['ap','ratevote']);
+    const walk = pid=>{ actions.pickProc(pid); call(actions, getState, st=>({shape:st.expert.shape, band:'core', auto:'review'})); actions.quickCompare(); actions.nextStep();
+      if(getState().S.modal){ actions.complChoose(0); actions.complContinue(); } };
+    walk('ap');
+    expect(routeSummary(getState().J).complete).toBe(false);
+    walk('ratevote');
+    const sum = routeSummary(getState().J);
+    expect(sum.complete).toBe(true);
+    expect(sum.rows.map(r=>r.pid)).toEqual(['ap','ratevote']);        // invoices have the stronger case than the rate decision
+    expect(sum.first.start.verdict).toBeTruthy();
+  });
+});

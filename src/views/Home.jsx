@@ -42,7 +42,7 @@ export default function Home(){
           <button className={'startcard' + (resume.length ? '' : ' lead')} onClick={actions.startGuided}>
             <span className="sc-i"><Icon name="map"/></span>
             <span className="sc-b"><b>Explore Meridian</b><span>A practice bank with {FUNCTIONS.length} divisions. Pick a process, make the calls, and compare with the Guide.</span></span>
-            <span className="sc-t">About 15 min</span></button>
+            <span className="sc-t">About 5 min a process</span></button>
           <button className="startcard" onClick={actions.startOwn}>
             <span className="sc-i"><Icon name="plot"/></span>
             <span className="sc-b"><b>{Object.keys(J.maps).length ? 'Map another process of your own' : 'Map your own work'}</b><span>Describe a process from your own job, step by step, and leave with a plan.</span></span>
