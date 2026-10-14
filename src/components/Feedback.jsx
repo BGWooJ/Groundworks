@@ -4,6 +4,7 @@ import {m, AnimatePresence, useReducedMotion} from 'motion/react';
 import {useGame, actions, ALL_EVENTS} from '../game/store.js';
 import {fill} from '../game/flow.js';
 import {reportById} from '../content/fieldReports.js';
+import {SaveDialog, RestoreDialog, RestoreConfirm} from './SaveDialogs.jsx';
 import {roleOf} from '../game/rpg.js';
 import {Icon, Art} from './ui.jsx';
 
@@ -46,6 +47,9 @@ export function Modal(){
   let body = null, cls = '';
   if(M && M.type==='compl') { body = <Complication M={M}/>; cls = 'encounter'; }
   else if(M && M.type==='report') { body = <ReportCard id={M.id} onClose={actions.closeModal}/>; cls = 'reportmodal'; }
+  else if(M && M.type==='save') { body = <SaveDialog/>; cls = 'savemodal'; }
+  else if(M && M.type==='restore') { body = <RestoreDialog M={M}/>; cls = 'savemodal'; }
+  else if(M && M.type==='restore-confirm') { body = <RestoreConfirm M={M}/>; cls = 'savemodal'; }
   const dy = reduce ? 0 : 24;
   return <AnimatePresence>{M && <m.div key="modal" className="modal" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration: reduce ? 0 : .18}}>
     <m.div className={'dispatch ' + cls} ref={card} role="dialog" aria-modal="true" aria-labelledby="dlgTitle"

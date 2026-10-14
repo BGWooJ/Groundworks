@@ -1,4 +1,5 @@
-// Browser check for v8 phase 1: the introduction, plain-language terms, "you are here", and the new words.
+// Browser check for v8: phase 1 (the introduction, plain-language terms, "you are here", the new words)
+// and phase 2 (save links and files, opened in other browsers).
 // Needs Playwright and a running preview:  npm run build && npx vite preview --port 4173
 //   then  node scripts/browser-check-v8.cjs
 const {chromium} = require(process.env.PLAYWRIGHT_PATH || 'playwright');
@@ -120,6 +121,97 @@ const stage = p=>p.evaluate(()=>{ const c = document.querySelector('.stages [ari
   g = await q.evaluate(()=>({sw:document.documentElement.scrollWidth, cards:document.querySelectorAll('.startcard').length}));
   ok('phone: the home screen fits, with both start cards', g.sw<=390 && g.cards===2, JSON.stringify(g));
   await q.screenshot({path:OUT+'/12-phone-home.png', fullPage:true});
+
+  /* ================= phase 2: getting back to your work ================= */
+  const fresh = async (vp)=>{ const c = await b.newContext({viewport:vp || {width:1360,height:800}, acceptDownloads:true}); const pg = await c.newPage();
+    pg.on('pageerror', e=>errors.push('save: '+e.message)); return {c, pg}; };
+  const walkOneStep = async pg=>{
+    await pg.click('.startcard >> nth=0'); await pg.click('.rolecard >> nth=1'); await pg.waitForSelector('.station'); await wait(900);
+    await pg.click('.station >> text=Economists'); await wait(900); await pg.click('.pick >> nth=0'); await wait(300);
+    await pg.click('.picknext .btn'); await wait(500); await pg.click('text=Choose the process to walk'); await wait(400);
+    await pg.click('.routecard'); await pg.waitForSelector('button.mcard.cur'); await pg.click('button.mcard.cur'); await pg.waitForSelector('.question .token');
+    for(let i=0;i<14;i++){ const ts = await pg.$$('.question .token'); if(!ts.length) break; await ts[0].click(); await wait(450); }
+    await pg.click('[data-focus="reveal"]'); await wait(2900);
+  };
+  const A = await fresh(); const pa = A.pg;
+  await A.c.grantPermissions(['clipboard-read','clipboard-write'], {origin:new URL(BASE).origin});
+  await pa.goto(BASE); await wait(700);
+  ok('save: the introduction offers "Played before?" to someone on a new browser', !!(await pa.$('.ihead >> text=Played before? Open your saved progress')));
+  await pa.click('text=Skip the introduction'); await wait(400);
+  g = await pa.evaluate(()=>({door:!!document.querySelector('.welcomeback'), save:!!document.querySelector('.tbtn[aria-label^="Save progress"]')}));
+  ok('save: an empty browser\'s home screen offers to open saved progress, and has nothing to save yet', g.door && !g.save, JSON.stringify(g));
+  await walkOneStep(pa);
+  g = await pa.evaluate(()=>{ const t = document.querySelector('.tbtn[aria-label^="Save progress"]'); return {btn:!!t, dot:!!(t && t.querySelector('.tdot'))}; });
+  ok('save: once there is work, the top bar offers "Save progress", marked as not yet saved', g.btn && g.dot, JSON.stringify(g));
+  await pa.click('.tbtn[aria-label^="Save progress"]'); await pa.waitForFunction(()=>{ const i = document.querySelector('.linkrow .in'); return i && i.value.includes('#save=gw1.'); });
+  g = await pa.evaluate(()=>({h:document.querySelector('#dlgTitle').textContent, link:document.querySelector('.linkrow .in').value, email:!!document.querySelector('a[href^="mailto:"]')}));
+  ok('save: the dialog makes a save link for this site, with an email option when it is short enough', g.h==='Take your progress with you' && g.link.startsWith(BASE) && g.email, `${g.link.length} characters`);
+  const link1 = g.link;
+  await pa.screenshot({path:OUT+'/20-save-dialog.png'});
+  await pa.click('.linkrow .btn'); await wait(300);
+  g = await pa.evaluate(async()=>({btn:document.querySelector('.linkrow .btn').textContent, clip:await navigator.clipboard.readText()}));
+  ok('save: "Copy the link" copies it and says so', g.btn==='Copied' && g.clip===link1, g.btn);
+  const [dl] = await Promise.all([pa.waitForEvent('download'), pa.click('.saveopt >> text=Save a file')]);
+  const file1 = OUT + '/progress.json'; await dl.saveAs(file1);
+  ok('save: "Save a file" downloads the progress', /groundwork-progress-.*\.json$/.test(dl.suggestedFilename()), dl.suggestedFilename());
+  await pa.click('.savedlg .actions >> text="Done"'); await wait(400);
+  g = await pa.evaluate(()=>!!document.querySelector('.tbtn[aria-label^="Save progress"] .tdot'));
+  ok('save: after saving, the top bar no longer marks progress as unsaved', !g);
+
+  /* the link, opened on a phone that has never seen Groundwork */
+  const B = await fresh({width:390,height:844}); const pb = B.pg;
+  await pb.goto(link1); await wait(1500);
+  g = await pb.evaluate(()=>({h1:document.querySelector('h1').textContent, hash:location.hash, toast:[...document.querySelectorAll('.toast')].map(t=>t.textContent).join(' '), resume:(document.querySelector('.resume-item')||{}).textContent}));
+  ok('link: an empty browser opens straight to home with the progress, no introduction', g.h1==='Groundwork' && /Welcome back/.test(g.toast), JSON.stringify({h1:g.h1, toast:g.toast.slice(0,60)}));
+  ok('link: the walk in progress is there to pick up', /1 of \d steps read/.test(g.resume||''), g.resume);
+  ok('link: the save is cleared from the address bar once read', g.hash==='', g.hash);
+  await pb.screenshot({path:OUT+'/21-phone-opened-link.png'});
+  await pb.click('.resume-item'); await wait(800);
+  g = await pb.evaluate(()=>document.querySelectorAll('.mcard.done').length);
+  ok('link: one tap returns to the walk with its answers', g===1, g);
+
+  /* the file, opened in a third browser through "Played before?" */
+  const C = await fresh(); const pc = C.pg;
+  await pc.goto(BASE); await wait(700);
+  await pc.click('.ihead >> text=Played before? Open your saved progress'); await wait(400);
+  await pc.screenshot({path:OUT+'/22-open-dialog.png'});
+  await pc.setInputFiles('.savedlg input[type=file]', file1); await wait(900);
+  g = await pc.evaluate(()=>({h1:document.querySelector('h1').textContent, resume:(document.querySelector('.resume-item')||{}).textContent}));
+  ok('file: a save file opens in another browser with the same progress', g.h1==='Groundwork' && /1 of \d steps read/.test(g.resume||''), JSON.stringify(g));
+
+  /* a newer save, opened where there is already progress */
+  await pa.click('.brand'); await wait(400); await pa.click('.resume-item'); await wait(700);
+  await pa.click('button.mcard.cur'); await pa.waitForSelector('.question .token');
+  for(let i=0;i<14;i++){ const ts = await pa.$$('.question .token'); if(!ts.length) break; await ts[0].click(); await wait(450); }
+  await pa.click('[data-focus="reveal"]'); await wait(2900);
+  await pa.click('.tbtn[aria-label^="Save progress"]'); await pa.waitForFunction(()=>{ const i = document.querySelector('.linkrow .in'); return i && i.value.includes('#save=gw1.'); });
+  const link2 = await pa.evaluate(()=>document.querySelector('.linkrow .in').value);
+  await pb.goto(link2); await wait(1500);
+  g = await pb.evaluate(()=>({h:(document.querySelector('#dlgTitle')||{}).textContent, cols:[...document.querySelectorAll('.sumgrid h3')].map(x=>x.textContent)}));
+  ok('replace: a browser with progress asks first, and shows both side by side', g.h==='Replace the progress in this browser?' && g.cols.length===2, JSON.stringify(g));
+  await pb.screenshot({path:OUT+'/23-phone-replace.png', fullPage:true});
+  g = await pb.evaluate(()=>document.documentElement.scrollWidth);
+  ok('phone: the replace dialog fits the screen width', g<=390, g);
+  await pb.click('text=Keep this browser’s progress'); await wait(400);
+  await pb.click('.brand'); await wait(500);
+  g = await pb.evaluate(()=>(document.querySelector('.resume-item')||{}).textContent);
+  ok('replace: keeping this browser\'s progress changes nothing', /1 of \d steps read/.test(g||''), g);
+  await pb.goto(link2); await wait(1500); await pb.click('text=Use the saved progress'); await wait(800);
+  g = await pb.evaluate(()=>(document.querySelector('.resume-item')||{}).textContent);
+  ok('replace: using the saved progress brings in the newer walk', /2 of \d steps read/.test(g||''), g);
+
+  /* a link cut short */
+  await pc.goto(BASE + '#save=' + link1.split('#save=')[1].slice(0, 60)); await wait(1200);
+  g = await pc.evaluate(()=>({h:(document.querySelector('#dlgTitle')||{}).textContent, err:(document.querySelector('.saveerr')||{}).textContent}));
+  ok('damaged: a link cut short explains itself instead of failing silently', g.h==='Open your saved progress' && /cut off/.test(g.err||''), g.err);
+  await pc.screenshot({path:OUT+'/24-damaged-link.png'});
+
+  /* phone: the save dialog */
+  await pb.click('.tbtn[aria-label^="Save progress"]'); await pb.waitForFunction(()=>{ const i = document.querySelector('.linkrow .in'); return i && i.value.includes('#save=gw1.'); });
+  g = await pb.evaluate(()=>({sw:document.documentElement.scrollWidth, btn:document.querySelector('.linkrow .btn').getBoundingClientRect().width}));
+  ok('phone: the save dialog fits, with a full-width copy button', g.sw<=390 && g.btn>250, JSON.stringify(g));
+  await pb.screenshot({path:OUT+'/25-phone-save.png'});
+  await A.c.close(); await B.c.close(); await C.c.close();
 
   ok('no page errors', !errors.length, errors.join(' | '));
   console.log(R.join('\n')); console.log('screenshots in', OUT);

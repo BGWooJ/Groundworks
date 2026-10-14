@@ -5,6 +5,8 @@ import {rankOf, roleOf, ROLES} from '../game/rpg.js';
 import {FIELD_REPORTS} from '../content/fieldReports.js';
 import {FUNCTIONS} from '../content/meridian.js';
 import {Icon, Art, Meter} from '../components/ui.jsx';
+import {KeepProgress} from '../components/SaveDialogs.jsx';
+import {isNewPlayer} from '../game/store.js';
 
 export default function Home(){
   const J = useGame(s=>s.J), confirmClear = useGame(s=>s.S.confirmClear);
@@ -46,8 +48,10 @@ export default function Home(){
             <span className="sc-b"><b>{Object.keys(J.maps).length ? 'Map another process of your own' : 'Map your own work'}</b><span>Describe a process from your own job, step by step, and leave with a plan.</span></span>
             <span className="sc-t">About 20 min</span></button>
         </div>
+        {isNewPlayer(J) && <p className="welcomeback"><Icon name="flag"/><span>Played before, on another computer or browser?</span>
+          <button className="linkbtn onspruce" onClick={()=>actions.restoreOpen()}>Open your saved progress</button></p>}
         <p className="hero-note"><button className="linkbtn onspruce" onClick={actions.introOpen}><Icon name="compass"/>How it works</button>{' '}
-          {processes} processes across {FUNCTIONS.length} divisions of a made-up bank, each with the Guide’s view to compare against, and {FIELD_REPORTS.length} landmark cases from real organisations. Your progress stays in this browser.</p>
+          {processes} processes across {FUNCTIONS.length} divisions of a made-up bank, each with the Guide’s view to compare against, and {FIELD_REPORTS.length} landmark cases from real organisations. Your progress saves in this browser, and a save link takes it anywhere.</p>
       </div>
     </div>
 
@@ -77,6 +81,7 @@ export default function Home(){
               {(x.kind!=='finished-walk' || x.reopenable) && <button className="btn secondary small" onClick={()=>openItem(x)}>{openLabel(x)}</button>}</li>)}</ul>
             : <p className="muted">None yet. Everything you start is saved here as you go.</p>}
           <button className="linkbtn" onClick={()=>actions.view('maps')}><Icon name="map"/>All my maps{work.length>5 ? ` (${work.length})` : ''}</button>
+          <KeepProgress card/>
         </div>
         <div><h3>Marks</h3>
           <ul className="marks">{ALL_MARKS.map(m=>{

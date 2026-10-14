@@ -9,6 +9,7 @@ import {stepDone, stepEval, startStep, finishedTitle, whatifChanges, guardrailsF
 import {MapRow, Heading} from './MapView.jsx';
 import {Icon, Emblem} from '../components/ui.jsx';
 import {StatShift} from '../components/Feedback.jsx';
+import {KeepProgress} from '../components/SaveDialogs.jsx';
 
 function Matrix({S}){
   const cells = {};
@@ -98,6 +99,7 @@ export default function Finished(){
         <button key={k} className={'wi ' + (S.whatif[k]?'on':'')} role="switch" aria-checked={S.whatif[k]} onClick={()=>actions.whatif(k)}><span className="sw"><i/></span>{l}</button>)}</div>
       {wi && (wi.length ? <ul className="wichanges">{wi.map(x=><li key={x.n}><b>Step {x.n}, {x.name}:</b> {x.text}.</li>)}</ul> : <p className="wichanges none">Nothing changes. These steps hold up under this what-if.</p>)}
     </section>}
+    {!S.reopened && <KeepProgress/>}
     <div className="actions"><button className="btn primary" onClick={actions.toExport}><Icon name="download"/>Take the map further</button>
       {S.mode==='guided' ? <button className="btn ghost" onClick={actions.startGuided}>Walk another process</button> : <button className="btn ghost" onClick={actions.toMap}>Back to the map</button>}
       <button className="btn ghost" onClick={actions.home}><Icon name="home"/>Home</button></div>

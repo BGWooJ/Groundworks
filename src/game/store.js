@@ -21,22 +21,11 @@ import {QUESTIONS, SCORED, asks, pruneAnswers, answered, stepDone, nextUnanswere
   familyOfCap, whoName, teamOf, shuffle, buildExport, lppPrompt, csvOf, slug, heatOf} from './flow.js';
 import {play, setSound} from '../audio/sound.js';
 
-/* ---------- persistence ---------- */
-const JKEY = 'gw_journal_v4', OLD_KEYS = ['gw_journal_v1'], SKEY = 'gw_settings_v5', GKEY = 'gw_guide';
-export function blankProfile(){ return {role:null, xp:0, stats:blankStats(), skills:{}, families:{}, codex:{}, exported:{}, walks:0, complications:0, strong:0, seen:{}, unseen:{marks:[], reports:[], rank:null}}; }
-export function blankJournal(){ return {marks:{}, flagships:[], walks:[], maps:{}, progress:{}, profile:blankProfile()}; }
-function read(key){ try{ return localStorage.getItem(key); }catch(e){ return null; } }
-function write(key, v){ try{ localStorage.setItem(key, v); }catch(e){ /* private mode: play on without saving */ } }
-function loadJournal(){
-  try{
-    const j = JSON.parse(read(JKEY) || 'null'); if(!j) return blankJournal();
-    const out = Object.assign(blankJournal(), j);
-    out.profile = Object.assign(blankProfile(), j.profile || {});
-    out.profile.stats = Object.assign(blankStats(), out.profile.stats || {});
-    out.profile.unseen = Object.assign({marks:[], reports:[], rank:null}, out.profile.unseen || {});
-    return out;
-  }catch(e){ return blankJournal(); }
-}
+/* ---------- persistence (v8: through storage.js) ---------- */
+import {KEYS, read, write, blankProfile, blankJournal, loadJournal, saveJournal, clearJournal, saveCodeInAddress, readSaveFile, saveError} from './storage.js';
+import {workItems} from './journal.js';
+export {blankProfile, blankJournal};
+const SKEY = KEYS.settings, GKEY = KEYS.guide;
 function loadSettings(){ try{ return Object.assign({sound:false, volume:0.6}, JSON.parse(read(SKEY) || '{}')); }catch(e){ return {sound:false, volume:0.6}; } }
 
 /* V5 marks join the v4 set. */
@@ -70,7 +59,8 @@ let state = {S:fresh(), J:loadJournal(), settings:loadSettings(), toasts:[], pop
 export function isNewPlayer(J){
   return !J.profile.role && !J.profile.xp && !J.walks.length && !Object.keys(J.maps).length && !Object.keys(J.progress).length;
 }
-if(!state.J.profile.seen.intro && isNewPlayer(state.J)) state.S.view = 'intro';
+/* Opening a save link skips the introduction: the player has played before. */
+if(!state.J.profile.seen.intro && isNewPlayer(state.J) && !saveCodeInAddress()) state.S.view = 'intro';
 setSound(state.settings.sound, state.settings.volume);
 const listeners = new Set();
 let uid = 0;
@@ -91,7 +81,7 @@ export function update(fn){
   const prev = state;
   state = produce(state, fn);
   if(needsSave(prev.S)) state = produce(state, d=>{ if(d.S.mode==='guided') saveWalk(d); else saveOwn(d); });
-  if(state.J!==prev.J) write(JKEY, JSON.stringify(state.J));
+  if(state.J!==prev.J) saveJournal(state.J);
   if(state.settings!==prev.settings) write(SKEY, JSON.stringify(state.settings));
   if(state.S.guide!==prev.S.guide) write(GKEY, state.S.guide);
   if(state.sfx.length){
@@ -234,10 +224,36 @@ export const actions = {
     else if(next==='own') actions.startOwn();
     else actions.home();
   },
+  /* ---------- v8: taking progress to another browser ---------- */
+  saveOpen(){ update(d=>{ d.S.modal = {type:'save'}; sfx(d, 'page'); }); },
+  saveDone(kind){ update(d=>{ d.J.profile.lastSave = Date.now(); d.J.profile.lastSaveKind = kind; sfx(d, 'xp'); }); },
+  restoreOpen(error){ update(d=>{ d.S.modal = {type:'restore', error:error || null}; sfx(d, 'page'); }); },
+  /* A save arrived from a link or a file. An empty browser takes it at once; one with progress asks first. */
+  restoreArrive(env){
+    if(isNewPlayer(state.J)) return actions.restoreApply(env);
+    update(d=>{ d.S.modal = {type:'restore-confirm', env}; });
+  },
+  restoreApply(env){
+    const e = env || (state.S.modal && state.S.modal.env); if(!e) return;
+    navigate(d=>{
+      // a fresh copy: a save that waited in the confirmation dialog is frozen with the rest of the state
+      const J = JSON.parse(JSON.stringify(e.J)); J.profile.seen.intro = true; d.J = J; resetTo(d);
+      const n = workItems(d.J).length;
+      toast(d, 'Welcome back', `Your progress is here: ${rankOf(d.J.profile.xp).name}, with ${n} ${n===1 ? 'walk or map' : 'walks and maps'}.`, 'flag');
+      sfx(d, 'levelup');
+    });
+  },
+  /* A file from "Save progress" or "Save map file". Returns a message if it cannot be opened. */
+  openSaveFile(text){
+    let f; try{ f = readSaveFile(text); }catch(e){ return saveError(e); }
+    update(d=>{ d.S.modal = null; });
+    if(f.kind==='map') actions.openMapFile(f.text); else actions.restoreArrive(f);
+    return null;
+  },
   clearAsk(){ update(d=>{ d.S.confirmClear = true; }); },
   clearNo(){ update(d=>{ d.S.confirmClear = false; }); },
   clearYes(){
-    try{ localStorage.removeItem(JKEY); OLD_KEYS.forEach(k=>localStorage.removeItem(k)); }catch(e){}
+    clearJournal();
     update(d=>{ d.J = blankJournal(); d.S.confirmClear = false; toast(d, 'Cleared', 'Your marks, walks, maps and progress are gone from this browser.', 'trash'); });
   },
 

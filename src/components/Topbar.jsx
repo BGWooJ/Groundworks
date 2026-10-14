@@ -2,7 +2,7 @@ import {useGame, actions} from '../game/store.js';
 import {readSteps, stepDone} from '../game/flow.js';
 import {getExpedition} from '../content/expeditions.js';
 import {rankOf, roleOf} from '../game/rpg.js';
-import {inProgress} from '../game/journal.js';
+import {inProgress, unsaved, workItems} from '../game/journal.js';
 import {Icon} from './ui.jsx';
 
 export const LOGO = <svg className="brandmark" width="26" height="26" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12.5" fill="none" stroke="currentColor" strokeWidth="1.5"/><path d="M18.5 9.5 L12.6 12.6 L9.5 18.5 L15.4 15.4 Z" fill="var(--brass-glow)"/></svg>;
@@ -11,6 +11,7 @@ export default function Topbar(){
   const S = useGame(s=>s.S), J = useGame(s=>s.J), P = J.profile, sound = useGame(s=>s.settings.sound);
   const open = inProgress(J).length, u = P.unseen || {marks:[], reports:[]};
   const fresh = u.marks.length + (u.rank ? 1 : 0);
+  const any = workItems(J).length>0, due = any && unsaved(J);
   const name = S.mode==='own' ? (S.own && S.own.process) : (S.procId ? getExpedition(S.procId).name : 'Meridian Reserve Bank');
   const showProg = S.steps.length && ['map','step','finished','export'].includes(S.view);
   const n = showProg ? readSteps(S).length : 0;
@@ -23,8 +24,9 @@ export default function Topbar(){
     <div className="tb-r">
       {showProg ? <span className="prog"><span className="segs">{S.steps.map((st,i)=><i key={st.id} className={stepDone(S, st)?'done':(S.view==='step' && i===S.cur?'cur':'')}/>)}</span>
         {n===S.steps.length ? `All ${n} steps read` : `${n} of ${S.steps.length} steps read`}</span> : null}
-      {S.view==='step' && <button className="tbtn" onClick={actions.guideToggle} aria-pressed={S.gui.open}><Icon name="compass"/>Hint</button>}
+      {S.view==='step' && <button className="tbtn" onClick={actions.guideToggle} aria-pressed={S.gui.open} aria-label="Hint"><Icon name="compass"/><span className="hide-s">Hint</span></button>}
       <button className="tbtn" onClick={()=>actions.view('maps')} aria-label={`My maps${open ? `, ${open} in progress` : ''}`}><Icon name="map"/><span className="hide-s">My maps</span>{open>0 && <span className="tcount">{open}</span>}</button>
+      {any && <button className="tbtn" onClick={actions.saveOpen} aria-label={`Save progress to take to another browser${due ? ', not saved since your latest work' : ''}`}><Icon name="send"/><span className="hide-s">Save progress</span>{due && <span className="tdot" aria-hidden="true"/>}</button>}
       <button className="tbtn" onClick={()=>actions.view('library')} aria-label={`Case library${u.reports.length ? `, ${u.reports.length} new` : ''}`}><Icon name="book"/><span className="hide-s">Library</span>{u.reports.length>0 && <span className="tcount new">{u.reports.length}</span>}</button>
       <button className="rankpill" onClick={()=>actions.view('character')} aria-label={`Your character: ${r.name}, ${P.xp} experience${fresh ? `, ${fresh} new` : ''}`}>
         <span className="rp-badge"><Icon name={role ? 'user' : 'compass'}/>{fresh>0 && <span className="tcount new" aria-hidden="true">{fresh}</span>}</span>

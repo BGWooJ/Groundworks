@@ -19,6 +19,12 @@ library** (were Field Reports and the Field Library), **Logbook** (was the field
 (was the field guide), and "Where could AI help most?" (was "Where does the pain live?"). Only the
 words on screen changed; saved progress and every stored name are the same.
 
+Phase 2 is in too: progress can leave the browser. **Save progress** (top bar, the Logbook, the
+finished map, My maps) makes a **save link** that holds everything, compressed into the part of the
+link after "#", which browsers never send to the website, and a **save file** with the same contents.
+Opening the link in any browser brings everything back; a browser that already has progress shows
+both side by side and asks before replacing anything.
+
 ## The hypothesis behind the game
 
 - **Behaviour we want:** before anyone proposes a tool, they read the process step by step and
@@ -80,8 +86,25 @@ and "show me the return" more often, and a builder meets "build our own" and "wr
 
 Every walk and map is saved in this browser as you go, including a setup you have only started typing.
 Home opens with **Pick up where you left off**, and **My maps** (top bar, every screen) lists everything
-in progress and finished. Finished walks reopen on their finished map. To move a map to another browser
-or device, use **Save map file** and **Open a map file**.
+in progress and finished. Finished walks reopen on their finished map.
+
+Browser storage is per browser, so v8 adds a way to take everything with you:
+
+- **Save progress** makes a **save link**: your maps, walks, rank and marks, compressed into the part
+  of the link after "#". Browsers never send that part to the website, so nothing reaches a server.
+  A walk in progress makes a link of about 660 characters; a finished walk plus a map of your own,
+  about 1,600. Copy it, or email it to yourself when it is short enough for mail apps (under 1,800
+  characters); longer links point to the save file instead.
+- The same dialog saves a **save file** with the same contents, for long links or people who prefer files.
+- **Open saved progress** (home screen, the introduction, My maps) takes a pasted link or a file.
+  v7 map files open there too. Opening a save link just works: an empty browser takes it at once, and
+  one with progress shows both side by side and asks first, with a way to keep a file of what is there.
+- A link that was cut short, or a file that is not a Groundwork save, says so in plain words.
+- The top bar marks progress that is newer than your last link or file, and the Logbook and the
+  finished map remind you where you stop.
+
+Everything in a save is treated as untrusted: it is checked, size-limited and copied as plain data
+before the game uses it (`src/game/storage.js`).
 
 ## The plan
 
@@ -133,6 +156,9 @@ LPP Plus, Copilot GCC, Copilot Studio, CodeHelper, No new tool) in `src/engine/t
 | `src/game/rpg.js` | Lenses, ranks, XP, standing and mastery |
 | `src/game/store.js` | Game state and every action; the journal in local storage, saved on every change |
 | `src/game/journal.js` | One list of everything started or finished, for Home, My maps and the top bar |
+| `src/game/storage.js` | v8: the one place the game saves and loads: this browser, save links and save files |
+| `src/components/SaveDialogs.jsx` | v8: saving and opening progress, and the check before replacing it |
+| `src/views/Intro.jsx`, `src/components/Stages.jsx`, `src/content/glossary.js` | v8: the introduction, "you are here", and plain-language terms |
 | `src/audio/sound.js` | Optional synthesised sound |
 | `src/motionFeatures.js` | Animation features for Motion, loaded after first paint |
 | `scripts/` | Content check, engine audit and fixture regeneration |
@@ -163,7 +189,7 @@ npm run check      # content check with the verdict spread
 npm run audit      # exhaustive engine audit: verdicts, ties, overlaps, coverage, content integrity
 node scripts/audit-options.mjs   # does every answer matter, do questions make sense, are complications a real choice
 node scripts/browser-check.cjs   # the v7 fixes in Chromium (needs Playwright and a running preview)
-node scripts/browser-check-v8.cjs   # v8 phase 1: introduction, terms, stages, new words
+node scripts/browser-check-v8.cjs   # v8: introduction, terms, stages, new words; save links and files across browsers
 npm run golden     # regenerate the pinned fixture after a deliberate scoring change
 npm run build      # static site in dist/
 ```

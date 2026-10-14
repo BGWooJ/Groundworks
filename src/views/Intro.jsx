@@ -38,7 +38,7 @@ const CARDS = [
      <p>After each step, you compare your calls with the Guide’s: an experienced surveyor who has walked every process with the people who do the work. Where you differ, notes from the team explain why.</p>
      <p>You finish with a plan for the process: what to fix first, what to try, and what to leave alone.</p>
      <ol className="iphases">{PHASES.map((p,i)=><li key={p.id}><span>{i+1}</span>{p.name}</li>)}</ol>
-     <p className="ifacts"><Icon name="flag"/>About 15 minutes for one process. Everything saves in this browser as you go.</p></>},
+     <p className="ifacts"><Icon name="flag"/>About 15 minutes for one process. Everything saves as you go, and a save link takes it to any browser.</p></>},
 ];
 
 export default function Intro(){
@@ -49,7 +49,10 @@ export default function Intro(){
   return <div className="intro narrow">
     <div className="ihead">
       <ol className="idots" aria-label={`Card ${i+1} of ${CARDS.length}`}>{CARDS.map((x,n)=><li key={x.k} className={n===i ? 'on' : (n<i ? 'done' : '')}/>)}</ol>
-      {!last && <button className="linkbtn" onClick={()=>actions.introDone(null)}>Skip the introduction</button>}
+      <span className="ihead-r">
+        <button className="linkbtn" onClick={()=>actions.restoreOpen()}>Played before? Open your saved progress</button>
+        {!last && <button className="linkbtn" onClick={()=>actions.introDone(null)}>Skip the introduction</button>}
+      </span>
     </div>
     <AnimatePresence mode="wait" initial={false} custom={dir}>
       <m.section key={c.k} className={'icard ic-' + c.k} aria-labelledby={'ih-'+c.k}

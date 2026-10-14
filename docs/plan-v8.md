@@ -177,3 +177,17 @@ Phases 1 and 2 don't depend on the map, so they can go live first.
 | The word for "pain" | **"Where could AI help most?"** The line underneath steers players toward time spent and keeps "no AI" a real answer. |
 | Several processes | **A route of up to three,** read with the quick read, with a short comparison at the end |
 | The content list in section 4 | Open: cut, add or swap anything before phase 4 begins |
+
+## Progress
+
+**Phase 1, words and the first two minutes: done.** As planned, plus "Who is the Guide?" next to the
+first mention of the Guide, and the lens line on both lens screens.
+
+**Phase 2, getting back to your work: done.** As planned. Found and fixed along the way:
+- A save link pasted into a tab where the game is already open changes only the part after "#", so
+  the page does not reload. The game now listens for that and opens the save.
+- With **Save progress** added, the top bar no longer fit on phones (from 320 px) or wrapped its
+  labels on desktop step screens. Narrow phones now show the logo alone. Between phone and wide
+  desktop the top-bar buttons show icons only. The process name shortens before anything wraps.
+- Saves are treated as untrusted: keys that could change how objects behave are dropped, damaged
+  entries are removed, and anything that unpacks to more than 4 MB is refused.
