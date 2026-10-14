@@ -11,7 +11,7 @@ departments in place. v7 makes work easy to find again, makes achievements visib
 choices first, checks that every option means something, and ends every map with a plan. See
 `docs/review-v6.md` and `docs/review-v7.md`.
 
-v8 (`docs/plan-v8.md`) comes in six phases; the first five are in. Phase 1: new players meet a three-card introduction
+v8 (`docs/plan-v8.md`, reviewed in `docs/review-v8.md`) came in six phases, all now in. Phase 1: new players meet a three-card introduction
 (what Meridian is, what they will do, what they get), a "you are here" strip names each stage of a
 walk or map, "What's an LLM?" and "Who is the Guide?" explain the two terms a newcomer meets cold,
 and the words are friendlier: **the Guide** (was "the field"), **landmark cases** and the **case
@@ -30,6 +30,13 @@ then a work area, then its processes (**The world** below). 54 true-to-life proc
 original 38 (**The processes** below). And the **quick read** (below) is the new default way to read
 a process: the facts are given, you make three calls per step on one screen, and one comparison with
 the Guide comes at the end. A route of two or three processes ends with a comparison of where to start.
+
+Phase 6 polished it:
+- **Speed:** a faster first load, with a loading screen from the first moment.
+- **Motion:** only position and fade animate.
+- **Accessibility:** every main screen passes an accessibility audit at desktop and phone size.
+
+See **Speed, motion and access** below.
 
 ## The hypothesis behind the game
 
@@ -122,6 +129,24 @@ Most people reading a process want to know where AI could help, not to fill in t
   them side by side and says which to start with.
 - **The full read** is one toggle away on the process screen, and the default for the Builder lens.
   XP and mastery count from either. Walks saved before v8 resume as full reads.
+
+## Speed, motion and access
+
+- **First load:** the first screen comes in one download of about 300 KB (compressed). The world map, the
+  reads and the finished map load just after, while the player reads it (`later()` in `src/App.jsx`).
+  The libraries and the Bank's content have files of their own, so they stay cached when only screens
+  change. `index.html` shows a loading screen before any script arrives, and says what to do if the game
+  cannot start.
+- **Motion:** only position, size and fade animate, never layout. Interface changes take 120 to 250 ms,
+  and the zoom between map levels takes 550 ms. With reduced motion turned on, nothing keeps moving and
+  the map's levels fade instead of zooming.
+- **Access:** text and controls meet WCAG 2.2 AA contrast. Brass behind white text uses `--brass-fill`.
+  - **Button names:** every button's spoken name contains the words it shows.
+  - **Dialogs:** the page behind is inert while one is open, and focus goes back to where it was when it
+    closes.
+  - **Tap targets:** on phones they are at least 24 pixels.
+- **Checked by:** `scripts/a11y-check.cjs` (axe-core on 25 screens at two sizes, plus keyboard and tap
+  targets) and `scripts/perf-check.cjs` (load on a slow phone, tap response, frame timing, reduced motion).
 
 ## The RPG layer
 
@@ -221,7 +246,7 @@ LPP Plus, Copilot GCC, Copilot Studio, CodeHelper, No new tool) in `src/engine/t
 | `src/views/Survey.jsx` | The ranking of every process ("How do they rank?") and your route |
 | `src/audio/sound.js` | Optional synthesised sound |
 | `src/motionFeatures.js` | Animation features for Motion, loaded after first paint |
-| `scripts/` | Content check, engine audit and fixture regeneration |
+| `scripts/` | Content check, engine audit, fixture regeneration, and the browser, accessibility and performance checks |
 | `docs/` | Review findings |
 | `src/art/` | Line icons and the illustration set (13 departments, 12 kinds of work, 3 autonomy levels, 4 lens portraits) |
 | `src/views/`, `src/components/` | Screens and shared UI |
@@ -282,6 +307,8 @@ npm run audit      # exhaustive engine audit: verdicts, ties, overlaps, coverage
 node scripts/audit-options.mjs   # does every answer matter, do questions make sense, are complications a real choice
 node scripts/browser-check.cjs   # the v7 fixes in Chromium (needs Playwright and a running preview)
 node scripts/browser-check-v8.cjs   # v8: introduction, terms, stages, new words; save links and files; the world map; the quick read
+node scripts/a11y-check.cjs         # v8: axe-core (WCAG 2.2 AA) on every main screen, dialogs, keyboard, tap targets
+node scripts/perf-check.cjs         # v8: first load on a slow phone, tap response, frame timing, reduced motion
 npm run golden     # regenerate the pinned fixture after a deliberate scoring change
 npm run build      # static site in dist/
 ```
@@ -294,7 +321,7 @@ behaviour (every Meridian step under every tool context, plus 4,000 sampled comb
 purpose: change `tools.js`, add the change to the ledger, then run `npm run golden`.
 
 `docs/review-v6.md` records the v6 review: the engine audit, what was fixed, and the open design
-questions.
+questions. `docs/review-v7.md` and `docs/review-v8.md` do the same for v7 and v8.
 
 The workflow in `.github/workflows/deploy.yml` tests, builds and publishes `dist/` to GitHub
 Pages on every push to `main`. In the repository settings, set **Pages > Source** to **GitHub

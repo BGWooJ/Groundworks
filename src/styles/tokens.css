@@ -14,6 +14,8 @@
   /* structure and heading */
   --spruce:#173B36; --spruce-2:#1F4943; --spruce-3:#2B5B53; --spruce-ink:#E6EFEA; --spruce-mute:#9DBAB1;
   --brass:#B9832A; --brass-2:#8C5F16; --brass-tint:#F4E7C8; --brass-glow:#E9BC5E;
+  /* v8: brass behind white text (buttons, tags): dark enough for 5:1 contrast. --brass stays for lines, bars and accents. */
+  --brass-fill:#94661C; --brass-edge:#5E400F;
 
   /* capability families */
   --read:#2F6690;   --read-tint:#DCE8F2;   --read-ink:#1D4566;

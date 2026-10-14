@@ -1,4 +1,4 @@
-import {useEffect, useRef} from 'react';
+import {Component, useEffect, useRef, lazy, Suspense} from 'react';
 import {LazyMotion, MotionConfig} from 'motion/react';
 import {useGame, actions, getState, activity, touch} from './game/store.js';
 import {saveCodeInAddress, clearAddress, unpackJournal, saveError} from './game/storage.js';
@@ -9,20 +9,49 @@ import {Toasts, Popups, Modal, Spotlight} from './components/Feedback.jsx';
 import Maps from './views/Maps.jsx';
 import Home from './views/Home.jsx';
 import Role from './views/Role.jsx';
-import OwnSetup from './views/OwnSetup.jsx';
-import {Reveal, Pick} from './views/Survey.jsx';
-import {Terrain} from './views/World.jsx';
-import MapView from './views/MapView.jsx';
-import Step from './views/Step.jsx';
-import QuickRead from './views/QuickRead.jsx';
-import Finished, {Export} from './views/Finished.jsx';
-import Character from './views/Character.jsx';
-import Library from './views/Library.jsx';
 
 const loadMotion = ()=>import('./motionFeatures.js').then(mod=>mod.default);
 
-const VIEWS = {home:Home, intro:Intro, role:Role, quick:QuickRead, 'own-setup':OwnSetup, terrain:Terrain, reveal:Reveal, pick:Pick, map:MapView,
-  step:Step, finished:Finished, export:Export, character:Character, library:Library, maps:Maps};
+/* v8: the first screens (the introduction, Home, the lenses, My maps) come in the first download. The rest
+   (the world map with its zooming, the reads, the finished map) load just after, while the player reads the
+   first screen, so a slow connection shows something useful sooner. Once loaded, a screen renders at once;
+   only a player faster than their connection ever sees "Opening". */
+function later(load, name='default'){
+  let Comp = null, p = null;
+  const preload = ()=>p || (p = load().then(m=>{ Comp = m[name]; return m; }));
+  const Lazy = lazy(()=>preload().then(m=>({default:m[name]})));
+  function Later(props){ return Comp ? <Comp {...props}/> : <Lazy {...props}/>; }
+  Later.preload = preload;
+  return Later;
+}
+const survey = ()=>import('./views/Survey.jsx'), finished = ()=>import('./views/Finished.jsx');
+const LATER = {
+  'own-setup':later(()=>import('./views/OwnSetup.jsx')), terrain:later(()=>import('./views/World.jsx'), 'Terrain'),
+  reveal:later(survey, 'Reveal'), pick:later(survey, 'Pick'), map:later(()=>import('./views/MapView.jsx')),
+  step:later(()=>import('./views/Step.jsx')), quick:later(()=>import('./views/QuickRead.jsx')),
+  finished:later(finished), export:later(finished, 'Export'),
+  character:later(()=>import('./views/Character.jsx')), library:later(()=>import('./views/Library.jsx')),
+};
+const preloadAll = ()=>Object.values(LATER).forEach(v=>v.preload().catch(()=>{}));
+function Opening(){ return <p className="opening" role="status">Opening…</p>; }
+
+/* If a screen cannot be fetched (the connection dropped, or the site was updated while this tab was open),
+   say so instead of losing the whole page. Browsers remember a failed download until the page reloads,
+   so reloading is the way on; progress is saved on every change, so it loses nothing. */
+class ScreenError extends Component{
+  constructor(props){ super(props); this.state = {failed:false}; }
+  static getDerivedStateFromError(){ return {failed:true}; }
+  render(){
+    if(!this.state.failed) return this.props.children;
+    return <div className="opening failed" role="alert"><div>
+      <h1 className="h3">This screen did not load</h1>
+      <p>The connection may have dropped, or Groundwork was updated while this page was open. Your progress is saved, so reloading loses nothing.</p>
+      <div className="actions"><button className="btn primary" onClick={()=>window.location.reload()}>Reload the page</button></div>
+    </div></div>;
+  }
+}
+
+const VIEWS = Object.assign({home:Home, intro:Intro, role:Role, maps:Maps}, LATER);
 
 export default function App(){
   const view = useGame(s=>s.S.view), mode = useGame(s=>s.S.mode), cur = useGame(s=>s.S.cur);
@@ -35,9 +64,25 @@ export default function App(){
     const first = !last.current; last.current = key;
     if(first) return;
     window.scrollTo({top:0});
-    const h = document.querySelector('main h1');
-    if(h && view!=='home'){ h.setAttribute('tabindex','-1'); h.focus({preventScroll:true}); }
+    if(view==='home') return;
+    // a screen still loading has no heading yet: wait for it, but give up if the player moves on
+    let tries = 0, raf = 0;
+    const focus = ()=>{
+      // while a screen loads, React keeps the last one hidden in the page: only a visible heading counts
+      const h = [...document.querySelectorAll('main h1')].find(x=>x.getClientRects().length);
+      if(!h){ if(++tries < 300) raf = requestAnimationFrame(focus); return; }
+      h.setAttribute('tabindex','-1'); h.focus({preventScroll:true});
+    };
+    focus();
+    return ()=>cancelAnimationFrame(raf);
   }, [key, view]);
+
+  /* Load the other screens once the first one is up and the browser is idle. */
+  useEffect(()=>{
+    const idle = window.requestIdleCallback || (f=>setTimeout(f, 600));
+    const id = idle(preloadAll, {timeout:2500});
+    return ()=>(window.cancelIdleCallback || clearTimeout)(id);
+  }, []);
 
   /* v8: opened from a save link. The progress travels after "#", so it never reaches a server; it is
      read once, then cleared from the address bar so a reload or a bookmark does not offer it again. */
@@ -73,7 +118,7 @@ export default function App(){
     <a className="skip" href="#main">Skip to content</a>
     <Topbar/>
     <Stages/>
-    <main className={view==='home' ? 'main home' : 'main'} id="main"><View/></main>
+    <main className={view==='home' ? 'main home' : 'main'} id="main"><ScreenError key={view}><Suspense fallback={<Opening/>}><View/></Suspense></ScreenError></main>
     <Toasts/><Popups/><Spotlight/><Modal/>
   </div></LazyMotion></MotionConfig>;
 }

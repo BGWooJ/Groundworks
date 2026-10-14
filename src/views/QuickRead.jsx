@@ -120,7 +120,7 @@ function ResultRow({S, st, i}){
       <p className="qguide"><b>The Guide:</b> {st.expertWhy}</p>
       <p className="small muted">{st.autoNote}</p>
       <div className="fnotes">{(S.dug[st.id] ? [0,1] : [0]).map(k=>{ const d = st.discoveries[k];
-        return <article key={k} className="fnote"><span className="fni"><Icon name="notes"/></span><div><h4>{d.title}</h4><p>{d.text}</p><p className="eff">{d.effect}</p></div></article>; })}
+        return <article key={k} className="fnote"><span className="fni"><Icon name="notes"/></span><div><h3>{d.title}</h3><p>{d.text}</p><p className="eff">{d.effect}</p></div></article>; })}
         {!S.dug[st.id] && <button className="fnote sealed" onClick={()=>actions.dig(i)}><Icon name="interview"/><span><b>Hear more from the team</b><span>One more note from {teamOf(st.who)}. +5 XP</span></span></button>}</div>
       {r && <button className="linkbtn" onClick={()=>actions.seeReport(r.id)}><Icon name="book"/>A landmark case: {r.title}</button>}
     </div>}
@@ -158,7 +158,7 @@ export default function QuickRead(){
     <div className={'actions sticky qfoot' + (compared || called===n ? ' ready' : '')}>
       {compared ? <><span className="count"><Icon name="check"/>All {n} steps compared</span>
           <button className="btn brass" onClick={actions.nextStep}>Continue to your plan<Icon name="chev"/></button></>
-        : <><span className="count"><span className="qbarm"><i style={{width:Math.round(called/n*100)+'%'}}/></span>{called} of {n} steps called</span>
+        : <><span className="count"><span className="qbarm"><i style={{'--p':Math.round(called/n*100)+'%'}}/></span>{called} of {n} steps called</span>
           <button className="btn brass" data-focus="compare" disabled={called<n} onClick={actions.quickCompare}><Icon name="spark"/>Compare with the Guide</button></>}
     </div>
   </div>;

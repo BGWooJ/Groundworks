@@ -111,6 +111,7 @@ export default function Finished(){
     {anyWi && <p className="callout wi-on"><Icon name="spark"/>What-if view. The map shows what would change; switch everything off to see your answers again.</p>}
     {S.reopened && <p className="callout back"><Icon name="map"/><span>A finished walk, reopened. Nothing is scored again; take it further or walk the process afresh.</span></p>}
     <RouteCompare S={S}/>
+    <h2 className="sr">The steps you read</h2>
     <MapRow S={S} final/>
     <Plan S={S}/>
     {S.mode==='guided' && <Debrief S={S}/>}

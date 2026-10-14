@@ -24,13 +24,14 @@ export default function Topbar(){
     <div className="tb-r">
       {showProg ? <span className="prog"><span className="segs">{S.steps.map((st,i)=><i key={st.id} className={stepDone(S, st)?'done':(S.view==='step' && i===S.cur?'cur':'')}/>)}</span>
         {n===S.steps.length ? `All ${n} steps read` : `${n} of ${S.steps.length} steps read`}</span> : null}
-      {S.view==='step' && <button className="tbtn" onClick={actions.guideToggle} aria-pressed={S.gui.open} aria-label="Hint"><Icon name="compass"/><span className="hide-s">Hint</span></button>}
-      <button className="tbtn" onClick={()=>actions.view('maps')} aria-label={`My maps${open ? `, ${open} in progress` : ''}`}><Icon name="map"/><span className="hide-s">My maps</span>{open>0 && <span className="tcount">{open}</span>}</button>
-      {any && <button className="tbtn" onClick={actions.saveOpen} aria-label={`Save progress to take to another browser${due ? ', not saved since your latest work' : ''}`}><Icon name="send"/><span className="hide-s">Save progress</span>{due && <span className="tdot" aria-hidden="true"/>}</button>}
-      <button className="tbtn" onClick={()=>actions.view('library')} aria-label={`Case library${u.reports.length ? `, ${u.reports.length} new` : ''}`}><Icon name="book"/><span className="hide-s">Library</span>{u.reports.length>0 && <span className="tcount new">{u.reports.length}</span>}</button>
-      <button className="rankpill" onClick={()=>actions.view('character')} aria-label={`Your character: ${r.name}, ${P.xp} experience${fresh ? `, ${fresh} new` : ''}`}>
-        <span className="rp-badge"><Icon name={role ? 'user' : 'compass'}/>{fresh>0 && <span className="tcount new" aria-hidden="true">{fresh}</span>}</span>
-        <span className="rp-text"><b>{r.name}</b><span className="rp-bar"><i style={{width:Math.round(r.pct*100)+'%'}}/></span></span>
+      {S.view==='step' && <button className="tbtn" data-tb="hint" onClick={actions.guideToggle} aria-pressed={S.gui.open}><Icon name="compass"/><span className="hide-s">Hint</span></button>}
+      <button className="tbtn" data-tb="maps" onClick={()=>actions.view('maps')}><Icon name="map"/><span className="hide-s">My maps</span>{open>0 && <> <span className="tcount">{open}<span className="sr"> in progress</span></span></>}</button>
+      {any && <button className="tbtn" data-tb="save" onClick={actions.saveOpen}><Icon name="send"/><span className="hide-s">Save progress</span><span className="sr"> to take to another browser{due ? ', not saved since your latest work' : ''}</span>{due && <span className="tdot" aria-hidden="true"/>}</button>}
+      <button className="tbtn" data-tb="library" onClick={()=>actions.view('library')}><Icon name="book"/><span className="hide-s">Library</span><span className="sr"> of landmark cases</span>{u.reports.length>0 && <> <span className="tcount new">{u.reports.length}<span className="sr"> new</span></span></>}</button>
+      <button className="rankpill" data-tb="character" onClick={()=>actions.view('character')}>
+        <span className="rp-badge" aria-hidden="true"><Icon name={role ? 'user' : 'compass'}/>{fresh>0 && <span className="tcount new">{fresh}</span>}</span>
+        <span className="rp-text"><b>{r.name}</b><span className="rp-bar" aria-hidden="true"><i style={{'--p':Math.round(r.pct*100)+'%'}}/></span></span>
+        <span className="sr">, your character: {P.xp} experience{fresh ? `, ${fresh} new` : ''}</span>
       </button>
       <button className="tbtn icononly" onClick={actions.soundToggle} aria-pressed={sound} aria-label={sound ? 'Sound on. Turn sound off' : 'Sound off. Turn sound on'} title={sound ? 'Sound on' : 'Sound off'}><Icon name={sound?'sound':'mute'}/></button>
     </div>

@@ -160,12 +160,12 @@ async function quickWalk(pg){
   await pa.goto(BASE); await wait(700);
   ok('save: the introduction offers "Played before?" to someone on a new browser', !!(await pa.$('.ihead >> text=Played before? Open your saved progress')));
   await pa.click('text=Skip the introduction'); await wait(400);
-  g = await pa.evaluate(()=>({door:!!document.querySelector('.welcomeback'), save:!!document.querySelector('.tbtn[aria-label^="Save progress"]')}));
+  g = await pa.evaluate(()=>({door:!!document.querySelector('.welcomeback'), save:!!document.querySelector('.tbtn[data-tb="save"]')}));
   ok('save: an empty browser\'s home screen offers to open saved progress, and has nothing to save yet', g.door && !g.save, JSON.stringify(g));
   await walkOneStep(pa);
-  g = await pa.evaluate(()=>{ const t = document.querySelector('.tbtn[aria-label^="Save progress"]'); return {btn:!!t, dot:!!(t && t.querySelector('.tdot'))}; });
+  g = await pa.evaluate(()=>{ const t = document.querySelector('.tbtn[data-tb="save"]'); return {btn:!!t, dot:!!(t && t.querySelector('.tdot'))}; });
   ok('save: once there is work, the top bar offers "Save progress", marked as not yet saved', g.btn && g.dot, JSON.stringify(g));
-  await pa.click('.tbtn[aria-label^="Save progress"]'); await pa.waitForFunction(()=>{ const i = document.querySelector('.linkrow .in'); return i && i.value.includes('#save=gw1.'); });
+  await pa.click('.tbtn[data-tb="save"]'); await pa.waitForFunction(()=>{ const i = document.querySelector('.linkrow .in'); return i && i.value.includes('#save=gw1.'); });
   g = await pa.evaluate(()=>({h:document.querySelector('#dlgTitle').textContent, link:document.querySelector('.linkrow .in').value, email:!!document.querySelector('a[href^="mailto:"]')}));
   ok('save: the dialog makes a save link for this site, with an email option when it is short enough', g.h==='Take your progress with you' && g.link.startsWith(BASE) && g.email, `${g.link.length} characters`);
   const link1 = g.link;
@@ -177,7 +177,7 @@ async function quickWalk(pg){
   const file1 = OUT + '/progress.json'; await dl.saveAs(file1);
   ok('save: "Save a file" downloads the progress', /groundwork-progress-.*\.json$/.test(dl.suggestedFilename()), dl.suggestedFilename());
   await pa.click('.savedlg .actions >> text="Done"'); await wait(400);
-  g = await pa.evaluate(()=>!!document.querySelector('.tbtn[aria-label^="Save progress"] .tdot'));
+  g = await pa.evaluate(()=>!!document.querySelector('.tbtn[data-tb="save"] .tdot'));
   ok('save: after saving, the top bar no longer marks progress as unsaved', !g);
 
   /* the link, opened on a phone that has never seen Groundwork */
@@ -206,7 +206,7 @@ async function quickWalk(pg){
   await pa.click('button.mcard.cur'); await pa.waitForSelector('.question .token');
   for(let i=0;i<14;i++){ const ts = await pa.$$('.question .token'); if(!ts.length) break; await ts[0].click(); await wait(450); }
   await pa.click('[data-focus="reveal"]'); await wait(2900);
-  await pa.click('.tbtn[aria-label^="Save progress"]'); await pa.waitForFunction(()=>{ const i = document.querySelector('.linkrow .in'); return i && i.value.includes('#save=gw1.'); });
+  await pa.click('.tbtn[data-tb="save"]'); await pa.waitForFunction(()=>{ const i = document.querySelector('.linkrow .in'); return i && i.value.includes('#save=gw1.'); });
   const link2 = await pa.evaluate(()=>document.querySelector('.linkrow .in').value);
   await pb.goto(link2); await wait(1500);
   g = await pb.evaluate(()=>({h:(document.querySelector('#dlgTitle')||{}).textContent, cols:[...document.querySelectorAll('.sumgrid h3')].map(x=>x.textContent)}));
@@ -229,7 +229,7 @@ async function quickWalk(pg){
   await pc.screenshot({path:OUT+'/24-damaged-link.png'});
 
   /* phone: the save dialog */
-  await pb.click('.tbtn[aria-label^="Save progress"]'); await pb.waitForFunction(()=>{ const i = document.querySelector('.linkrow .in'); return i && i.value.includes('#save=gw1.'); });
+  await pb.click('.tbtn[data-tb="save"]'); await pb.waitForFunction(()=>{ const i = document.querySelector('.linkrow .in'); return i && i.value.includes('#save=gw1.'); });
   g = await pb.evaluate(()=>({sw:document.documentElement.scrollWidth, btn:document.querySelector('.linkrow .btn').getBoundingClientRect().width}));
   ok('phone: the save dialog fits, with a full-width copy button', g.sw<=390 && g.btn>250, JSON.stringify(g));
   await pb.screenshot({path:OUT+'/25-phone-save.png'});
@@ -276,7 +276,7 @@ async function quickWalk(pg){
   await pin('Benefits', 'Inquiries', 'Benefits inquiries'); await pin('Finance', 'Payables', 'Supplier invoice processing'); await pin('Economists', 'Policy meeting briefings', 'The policy recommendation itself');
   g = await pw.evaluate(()=>[...document.querySelectorAll('.rb-slot.on > span')].map(x=>x.textContent));
   ok('route: pins from three divisions fill the route', g.length===3, g.join(' | '));
-  await pw.click('.lm[aria-label^="Enterprise IT"]'); await wait(850); await pw.click('.zone >> nth=0'); await wait(850);
+  await pw.click('.lm[aria-label^="IT,"]'); await wait(850); await pw.click('.zone >> nth=0'); await wait(850);
   g = await pw.evaluate(()=>{ const b = document.querySelector('.site .pin'); return {disabled:b.disabled, text:b.textContent}; });
   ok('route: a fourth pin waits for a free place', g.disabled && /Route full/.test(g.text), JSON.stringify(g));
   await pw.reload(); await wait(900);

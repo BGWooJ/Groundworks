@@ -8,23 +8,48 @@
 <title>Groundwork: find where an LLM earns its keep</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;0,7..72,700;1,7..72,400&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<!-- v8: the fonts do not hold up the first paint; text shows in a system font and switches when they arrive -->
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;0,7..72,700;1,7..72,400&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;0,7..72,700;1,7..72,400&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet"></noscript>
+<style>
+  /* v8: shown from the first moment, before any script arrives; the game replaces it when it starts. */
+  body{margin:0;background:#EFEBE0;color:#1B272A}
+  .shell-bar{height:52px;background:#173B36;box-shadow:0 2px 0 rgba(0,0,0,.15)}
+  .shell{max-width:34rem;margin:14vh auto 0;padding:0 1.25rem;text-align:center;font:1.05rem/1.55 'Atkinson Hyperlegible','Segoe UI',system-ui,sans-serif}
+  .shell svg{display:block;margin:0 auto 14px;color:#173B36}
+  .shell h1{font:700 1.7rem/1.2 Literata,Georgia,serif;margin:0 0 .4rem}
+  .shell p{margin:.3rem 0;color:#3A4A4C}
+  .shell .dots{display:inline-block;width:3ch;text-align:left}
+  .shell .dots::after{content:'…';animation:shell-dots 1.6s steps(4) infinite}
+  @keyframes shell-dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+  .shell .fail{text-align:left;margin-top:1.4rem}
+  @media (prefers-reduced-motion: reduce){ .shell .dots::after{animation:none;content:'…'} }
+</style>
 </head>
 <body>
-<div id="app"></div>
+<div id="app"><div id="shell"><div class="shell-bar"></div><main class="shell" role="status">
+  <svg width="44" height="44" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M18.5 9.5 L12.6 12.6 L9.5 18.5 L15.4 15.4 Z" fill="#B9832A"/></svg>
+  <h1>Groundwork</h1>
+  <p>A practice game for finding where AI can help at work.</p>
+  <p id="shell-msg">Opening Meridian<span class="dots"></span></p>
+  <noscript><p class="fail">Groundwork needs JavaScript. Turn it on for this site and reload the page.</p></noscript>
+</main></div></div>
 <script>
-  /* If the game cannot start, say so instead of leaving a blank page. React replaces this when it renders. */
+  /* If the game cannot start, say so instead of leaving the loading screen up. The game removes #shell when it renders. */
   (function(){
-    function show(){
-      var app = document.getElementById('app');
-      if(!app || app.childElementCount) return;
-      app.innerHTML = '<main style="max-width:34rem;margin:12vh auto;padding:0 1.25rem;font:1.05rem/1.55 \'Atkinson Hyperlegible\',system-ui,sans-serif;color:#173B36">'
-        + '<h1 style="font:600 1.6rem/1.2 Literata,Georgia,serif;margin:0 0 .75rem">Groundwork did not start</h1>'
-        + '<p>Try reloading the page.</p>'
-        + '<p>If it stays like this, the site may have been published without being built. In the repository on GitHub, open <b>Settings</b>, then <b>Pages</b>, and set <b>Source</b> to <b>GitHub Actions</b>.</p></main>';
+    function say(html){
+      var main = document.querySelector('#shell main');
+      if(!main) return;
+      var msg = document.getElementById('shell-msg'); if(msg) msg.remove();
+      var old = main.querySelector('.fail'); if(old) old.remove();
+      main.insertAdjacentHTML('beforeend', '<div class="fail">' + html + '</div>');
     }
-    window.addEventListener('error', function(e){ if(e.target && e.target.tagName === 'SCRIPT') show(); }, true);
-    setTimeout(show, 10000);
+    window.addEventListener('error', function(e){
+      if(e.target && e.target.tagName === 'SCRIPT') say('<p><b>Groundwork did not start.</b> Try reloading the page.</p>'
+        + '<p>If it stays like this, the site may have been published without being built. In the repository on GitHub, open <b>Settings</b>, then <b>Pages</b>, and set <b>Source</b> to <b>GitHub Actions</b>.</p>');
+    }, true);
+    // a slow connection is not a failure: after 20 seconds, say so and offer a reload
+    setTimeout(function(){ if(document.getElementById('shell-msg')) say('<p>This is taking longer than usual. The connection may be slow; try reloading the page.</p>'); }, 20000);
   })();
 </script>
 <script type="module" src="/src/main.jsx"></script>

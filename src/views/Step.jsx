@@ -101,7 +101,7 @@ function SituationOwn({S, st, i, a}){
       <div className="nq"><label htmlFor="npeople">How many people do this work?</label><input className="in short" id="npeople" type="number" min="0" value={n.people||''} onChange={e=>actions.numSet('people', e.target.value)} placeholder="e.g. 4"/></div>
       <p className="nsum" aria-live="polite">{r ? numbersSentence(r) : 'Add how often and how long, and the hours appear here.'}</p>
       {r && <><DotField n={r.perMonth} caption="a month"/>
-        {r.share!=null && <div className="share"><span className="sbar"><i style={{width:Math.min(100, Math.round(r.share*100))+'%'}}/></span><span className="cap">{Math.min(100, Math.round(r.share*100))}% of the team&rsquo;s time</span></div>}</>}
+        {r.share!=null && <div className="share"><span className="sbar"><i style={{'--p':Math.min(100, Math.round(r.share*100))+'%'}}/></span><span className="cap">{Math.min(100, Math.round(r.share*100))}% of the team&rsquo;s time</span></div>}</>}
     </div>
   </>;
 }
@@ -185,7 +185,7 @@ function Lenses({S, st, a, e}){
   } else {
     const max = e.tool ? Math.max(1, ...Object.values(e.tool.scores)) : 1;
     body = <><ul className="scorebars">{e.tool && DESTINATIONS.map(d=>{ const sc = Math.max(0, e.tool.scores[d.id]);
-        return <li key={d.id} className={e.tool.winner===d.id?'win':''}><span>{d.name}</span><span className="sb"><i style={{width:Math.round(sc/max*100)+'%'}}/></span><b>{sc}</b></li>; })}</ul>
+        return <li key={d.id} className={e.tool.winner===d.id?'win':''}><span>{d.name}</span><span className="sb"><i style={{'--p':Math.round(sc/max*100)+'%'}}/></span><b>{sc}</b></li>; })}</ul>
       <p><b>Guardrails.</b> {guardrailsFor(e).slice(0,4).map(guardrailName).join(', ')}.</p>
       {guided && <p><b>Data needed.</b> {st.dataNeeded}</p>}</>;
   }
@@ -283,7 +283,7 @@ function ReadPanel({S, st, a}){
       return revealed ? <div key={q.k} className={'arow ' + (mk?'m-'+mk:'')} style={{'--si':si<0?0:si}}>{inner}</div>
         : <button key={q.k} className="arow" onClick={()=>actions.reopen(q.k)} aria-label={`Change: ${q.label}, ${name}`}>{inner}<span className="rc"><Icon name="chev"/></span></button>;
     })}</div>
-    {!done && <p className="muted small qcount"><span className="qbar"><i style={{width:Math.round(count/asked.length*100)+'%'}}/></span>{count} of {asked.length} answered</p>}
+    {!done && <p className="muted small qcount"><span className="qbar"><i style={{'--p':Math.round(count/asked.length*100)+'%'}}/></span>{count} of {asked.length} answered</p>}
     {done && guided && !revealed && <div className="actions"><button className="btn brass big" data-focus="reveal" onClick={actions.reveal}><Icon name="spark"/>Compare with the Guide</button></div>}
     {done && (guided ? (revealed && <RevealGuided S={S} st={st} a={a}/>) : <ResultOwn S={S} st={st} a={a}/>)}
   </>;
