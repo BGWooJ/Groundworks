@@ -6,6 +6,7 @@
    An area with no processes yet is hidden on the map.
    ===================================================================== */
 import {FUNCTIONS} from './meridian.js';
+import {MORE_ALL} from './more/index.js';
 
 export const AREAS = {
   econ:[
@@ -73,6 +74,9 @@ export const AREAS = {
     {id:'leg-policy',    name:'Policy & ethics', icon:'rigor', d:'The rules staff work by, kept current and attested to each year.', processes:['policylib']},
   ],
 };
+
+/* v8, phase 4: the added processes join the work areas they name. */
+MORE_ALL.forEach(x=>{ const a = (AREAS[x.fn] || []).find(y=>y.id===x.area); if(a && !a.processes.includes(x.proc.id)) a.processes.push(x.proc.id); });
 
 /* The areas a player can open: those with at least one process. */
 export function areasOf(fnId){ return (AREAS[fnId] || []).filter(a=>a.processes.length); }

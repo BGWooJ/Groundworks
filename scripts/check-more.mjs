@@ -16,7 +16,9 @@ const list = mod.MORE;
 const errors = [], notes = [];
 const has = (arr, id)=>arr.some(o=>o.id===id);
 const words = s=>String(s||'').split(/\s+/).filter(Boolean);
-const existing = new Set(); FUNCTIONS.forEach(f=>f.processes.forEach(p=>existing.add(p.id)));
+// once a file is wired in, its own processes are in FUNCTIONS too; only other files' ids count as taken
+const own = new Set((list||[]).map(x=>x && x.proc && x.proc.id));
+const existing = new Set(); FUNCTIONS.forEach(f=>f.processes.forEach(p=>{ if(!own.has(p.id)) existing.add(p.id); }));
 const seen = new Set();
 const PROSE = ['n','who','vol','sys','notes','pain','why','reality','metric','hyp','data'];
 const AMERICAN = /\b(summariz|organiz|prioritiz|analyz|optimiz|categoriz|recogniz|standardiz|minimiz|maximiz|utiliz|color|center|behavior|labor|favor|catalog\b|program\b(?! of)|license\b|defense|fulfill\b)/i;

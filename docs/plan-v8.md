@@ -206,3 +206,25 @@ screen readers, and stays smooth on modest hardware. Decisions and fixes along t
 - **Fixed:** starting a walk used to carry over state from the screen it was started from, such as
   which complications had already fired. Every walk now starts clean.
 - **Economists' Forecasting area** has no processes yet and is hidden until phase 4 fills it.
+
+**Phase 4, more ground: done.**
+- **What was added:** 54 new processes and 174 new steps, for 92 processes and 300 steps in 38 work
+  areas. They are written in `src/content/more/` from the list in section 4, with a few changes
+  where an item duplicated an existing process:
+  - Summarising business contacts was already the district intelligence process, so the regional
+    area gets the business survey coding instead.
+  - Tracking exam findings was already a step of examination planning, so it became a quality review
+    of workpapers.
+- **How each file was checked:** by `scripts/check-more.mjs`, then read by hand for realism, honesty
+  and house style. The existing 38 processes are unchanged. The pinned scoring fixture now covers all
+  92, and the existing entries are identical.
+- **Fixed, a v7 bug in the plan headline** found while playing the new processes:
+  - **Wrong headline:** "Nothing here needs a new tool now" replaced the real headline whenever
+    nothing was to be built. That happened in 41 of 92 processes read the Guide's way, including the
+    briefing cycle flagship.
+  - **Crash:** when the best step was engineering with nothing needing groundwork, the page crashed.
+    This could also happen on a map of your own.
+  - **Now:** a test reads every process the Guide's way and checks its headline.
+- **A finding, not changed:** 26 of the original 126 Guide reads would draw a challenge if a player
+  gave the same answers on a map of their own. Players never see challenges on Meridian, so it is
+  reported by `scripts/check-guide-reads.mjs`, not enforced. None of the new reads draw one.

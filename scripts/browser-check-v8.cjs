@@ -238,11 +238,11 @@ const stage = p=>p.evaluate(()=>{ const c = document.querySelector('.stages [ari
   g = await pw.evaluate(()=>{ const f = window.__f, gaps = f.slice(1).map((t,i)=>t - f[i]); return {frames:f.length, worst:Math.round(Math.max(...gaps)), over50:gaps.filter(x=>x>50).length}; });
   ok('motion: entering a division runs without long stalls', g.worst<120 && g.over50<=3, JSON.stringify(g));
   g = await pw.evaluate(()=>({h1:document.querySelector('h1').textContent, focus:document.activeElement && document.activeElement.tagName, zones:document.querySelectorAll('.zone').length, crumbs:[...document.querySelectorAll('.wscene-head .crumb')].map(x=>x.textContent)}));
-  ok('world: a division opens with its work areas, and focus moves to its name', g.h1==='Economists' && g.focus==='H1' && g.zones===2, JSON.stringify(g));
+  ok('world: a division opens with its work areas, and focus moves to its name', g.h1==='Economists' && g.focus==='H1' && g.zones===3, JSON.stringify(g));
   ok('world: the breadcrumb says where you are', g.crumbs.join(' > ')==='Meridian > Economists', g.crumbs.join(' > '));
   await pw.click('.zone:has-text("Policy meeting briefings")'); await wait(900);
   g = await pw.evaluate(()=>({h1:document.querySelector('h1').textContent, sites:document.querySelectorAll('.site').length, rating:!!document.querySelector('.site .heatbar')}));
-  ok('world: a work area lists its processes', g.h1==='Policy meeting briefings' && g.sites===2, JSON.stringify(g));
+  ok('world: a work area lists its processes', g.h1==='Policy meeting briefings' && g.sites===3, JSON.stringify(g));
   ok('world: ratings stay hidden until the player has chosen', !g.rating);
   await pw.keyboard.press('Escape'); await wait(800);
   ok('world: Escape goes back up one level', (await pw.evaluate(()=>document.querySelector('h1').textContent))==='Economists');
@@ -309,7 +309,7 @@ const stage = p=>p.evaluate(()=>{ const c = document.querySelector('.stages [ari
   g = await pp.evaluate(()=>{ const n = document.querySelector('.lm[aria-label^="Economists"] .lm-name').getBoundingClientRect(); return {labelPx:Math.round(n.height), sw:document.documentElement.scrollWidth, k:(/scale\(([\d.]+)\)/.exec(document.querySelector('.wmap svg > g').getAttribute('transform')||'')||[0,1])[1]}; });
   ok('phone: the map opens zoomed to the screen, with readable labels', +g.k>1.5 && g.labelPx>=12 && g.sw<=390, JSON.stringify(g));
   await pp.screenshot({path:OUT+'/40-phone-world.png'});
-  await pp.click('.lm[aria-label^="Economists"]'); await wait(900); await pp.click('.zone >> nth=0'); await wait(900);
+  await pp.click('.lm[aria-label^="Economists"]'); await wait(900); await pp.click('.zone:has-text("Policy meeting briefings")'); await wait(900);
   g = await pp.evaluate(()=>({h1:document.querySelector('h1').textContent, sw:document.documentElement.scrollWidth}));
   ok('phone: a division and a work area open by tapping, and fit', g.h1==='Policy meeting briefings' && g.sw<=390, JSON.stringify(g));
   await pp.screenshot({path:OUT+'/41-phone-area.png'});

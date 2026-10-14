@@ -1,4 +1,5 @@
 import {NEW_COMPACT} from './districts.js';
+import {MORE_ALL} from './more/index.js';
 import {CAPS, SHAPES, INPUTS, REPS, STAKES, AUTONOMY, GUARDRAILS, LEVELS, FUNCTIONS, PROCESSES} from './meridian.js';
 /* =====================================================================
    EXPEDITIONS
@@ -540,6 +541,7 @@ const COMPACT = {
 
 /* v5: the new districts, in the same compact form. */
 Object.assign(COMPACT, NEW_COMPACT);
+MORE_ALL.forEach(x=>{ COMPACT[x.proc.id] = {intro:x.intro, steps:x.steps}; });   // v8, phase 4
 
 /* ---------------------------------------------------------------------
    Expansion

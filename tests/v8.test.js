@@ -204,3 +204,32 @@ describe('the world', ()=>{
     expect(getState().S).toMatchObject({procId:'ratevote', view:'map', finishedOnce:false, compl:{fired:[], answers:[]}});
   });
 });
+
+/* ---------- phase 4: more ground ---------- */
+describe('more ground', ()=>{
+  it('opens 92 processes in 38 work areas, each area with two or three', async ()=>{
+    memoryStorage();
+    const {FUNCTIONS} = await import('../src/content/meridian.js');
+    const {AREAS, areasOf, checkAreas} = await import('../src/content/areas.js');
+    const {validateExpeditions} = await import('../src/content/expeditions.js');
+    expect(FUNCTIONS.reduce((n,f)=>n+f.processes.length, 0)).toBe(92);
+    expect(Object.values(AREAS).flat().filter(a=>a.processes.length).length).toBe(38);
+    FUNCTIONS.forEach(f=>areasOf(f.id).forEach(a=>{ expect(a.processes.length).toBeGreaterThanOrEqual(2); expect(a.processes.length).toBeLessThanOrEqual(3); }));
+    expect(checkAreas()).toEqual([]);
+    expect(validateExpeditions()).toEqual([]);
+  });
+  it('gives every process a plan with an honest headline, read the Guide’s way', async ()=>{
+    memoryStorage();
+    const {FUNCTIONS} = await import('../src/content/meridian.js');
+    const {getExpedition} = await import('../src/content/expeditions.js');
+    const {planFor, stepEval} = await import('../src/game/flow.js');
+    const {expertBand} = await import('../src/engine/engine.js');
+    FUNCTIONS.forEach(f=>f.processes.forEach(p=>{
+      const e = getExpedition(p.id), S = {mode:'guided', procId:p.id, steps:e.steps, ans:{}, whatif:{}, includeDesc:false};
+      e.steps.forEach(st=>{ S.ans[st.id] = {shape:st.expert.shape, input:st.expert.input, rep:st.expert.rep, stakes:st.expert.stakes, band:expertBand(st), cap:st.expertPick, auto:st.autoBest, where:'office', builder:'team', sens:'internal', revealed:true}; });
+      const plan = planFor(S), verdicts = e.steps.map(st=>stepEval(S, st).verdict);
+      const nothing = verdicts.every(v=>v==='small' || v==='park');
+      expect(/^Nothing here/.test(plan.headline), `${p.id}: ${verdicts.join(',')} -> ${plan.headline}`).toBe(nothing);
+    }));
+  });
+});

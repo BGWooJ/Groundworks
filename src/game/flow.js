@@ -296,12 +296,14 @@ export function planFor(S){
     steps: withHours.length, of: rows.length} : null;
 
   const firstGround = phases[0].steps.map(r=>r.n), start = rows.find(r=>r.n===startN);
-  let headline;
+  /* v8 fix: the headline was overwritten with "nothing needs a tool" whenever nothing was to be built,
+     and was read before it was set when the best step was engineering with no groundwork (a crash). */
+  let headline = null;
   if(start && PHASE_OF[start.verdict]==='prove') headline = `Start by piloting step ${start.n}, ${start.name.toLowerCase()} (${start.verdictName.toLowerCase()})` + (firstGround.length ? `, while the groundwork on ${list(firstGround)} is done.` : '.');
   else if(firstGround.length) headline = `Start with groundwork on ${list(firstGround)}. No step is ready to pilot until that is done.`;
   const builds = phases[2].steps.map(r=>r.n);
-  if(builds.length && headline.startsWith('Start')) headline += ` ${builds.length>1 ? 'Steps' : 'Step'} ${builds.length>1 ? builds.slice(0,-1).join(', ') + ' and ' + builds[builds.length-1] : builds[0]} can be built alongside, with rules and integration.`;
-  else if(phases[2].steps.length) headline = `The answer here is mostly engineering: ${list(phases[2].steps.map(r=>r.n))} can be built with rules and integration.`;
+  if(headline){ if(builds.length) headline += ` ${builds.length>1 ? 'Steps' : 'Step'} ${builds.length>1 ? builds.slice(0,-1).join(', ') + ' and ' + builds[builds.length-1] : builds[0]} can be built alongside, with rules and integration.`; }
+  else if(builds.length) headline = `The answer here is mostly engineering: ${list(builds)} can be built with rules and integration.`;
   else headline = 'Nothing here needs a new tool now. Keep it simple, and revisit if the volume or the picture changes.';
 
   return {headline, phases, depends, asks, measures, hours, charter: c && (c.challenge || c.success) ? c : null};

@@ -39,8 +39,8 @@ decorates is left out.
 
 ## Two ways in
 
-**Explore Meridian.** A made-up reserve bank with 13 divisions and 38 walkable processes
-(126 steps), drawn as a map you move around (see **The world** below). Go inside a division, then one
+**Explore Meridian.** A made-up reserve bank with 13 divisions, 38 work areas and 92 walkable
+processes (300 steps), drawn as a map you move around (see **The world** below). Go inside a division, then one
 of its work areas, and walk a process or pin up to three to your route; then read it step by step.
 After each read you compare with the Guide's view: which answers match, the verdict, notes from the
 team, and often a landmark case from the wider world. Two complications per walk
@@ -78,7 +78,8 @@ Meridian is an island of five regions, with each of the 13 divisions a landmark 
   work area (its processes). Each level grows out of the spot you pressed and shrinks back into it.
   The breadcrumb, Back or Escape go up a level. With reduced motion turned on, levels fade instead.
 - **Work areas** (`src/content/areas.js`) group each division's processes the way its people would.
-  Every process belongs to exactly one, and the content check enforces it.
+  Every process belongs to exactly one, and the content check enforces it. Each area holds two or
+  three processes.
 - **The route** replaces the shortlist. Pin up to three processes from any level, and the route is kept
   with your progress. **How do they rank?** shows where your picks sit among every process; ratings
   stay hidden until then, so judging the evidence is still part of the game. **Read my route** lists
@@ -192,10 +193,42 @@ LPP Plus, Copilot GCC, Copilot Studio, CodeHelper, No new tool) in `src/engine/t
 | `src/styles/` | Tokens and styles |
 | `tests/` | Golden tests that pin the engine to v4, and content tests |
 
+## The processes
+
+The original 38 processes are in `src/content/meridian.js`, `expeditions.js` and `districts.js`. v8
+adds 54 more in `src/content/more/`, one file per group of divisions, merged on load
+(`more/index.js`).
+
+- **What they are:** true-to-life work that real central banks and large public bodies do, at
+  Meridian's scale. Examples:
+  - nowcasting growth from early data;
+  - sanctions screening alerts;
+  - stress test review;
+  - CCTV review requests;
+  - board minutes;
+  - pension estimates.
+- **The verdicts:** they are deliberately mixed. Across all 300 steps:
+
+  | Verdict | Steps |
+  |---|---|
+  | Assist only | 66 |
+  | Pilot now | 60 |
+  | Engineering, not AI | 59 |
+  | Prepare the data first | 39 |
+  | Fix the process first | 38 |
+  | Not worth a tool | 24 |
+  | Capture the data first | 9 |
+  | Park it | 5 |
+
+  Every division has at least six different verdicts, and "pilot now" is about one step in five.
+
 ## Adding content
 
-- **A process:** add it to a department in `districts.js` (or a new department) with steps in
-  the compact form. Run `npm run check -- -v` to see the Guide's verdict for every step, and
+- **A process:** add it to a file in `src/content/more/` with its division, work area and steps in
+  the compact form, and check the file with `node scripts/check-more.mjs <file>`. It checks structure,
+  allowed values, the work area, house style, each step's verdict, and whether the engine would
+  question the Guide's own read. `node scripts/check-guide-reads.mjs -v` reports the verdict spread
+  for every division. Run `npm run check -- -v` to see the Guide's verdict for every step, and
   adjust the profile until each lands where you intend.
 - **A landmark case:** add it to `fieldReports.js` with a named, linkable source and a figure you
   can find in that source. Tag the capabilities, verdicts, guardrails and kinds of work it
